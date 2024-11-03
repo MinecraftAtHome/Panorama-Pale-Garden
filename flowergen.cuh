@@ -28,7 +28,7 @@ struct Pos3 {
 
 __device__ inline bool singleFlowerGenerates(Xoroshiro* xrand, const BlockPos2D& relativePos)
 {
-    // rarity filter (chance = 8)
+    // rarity filter (chance = 32)
     const float r = xNextFloat(xrand);
     if (!(r < 1.0F / 32.0F))
         return false;
@@ -127,3 +127,9 @@ __device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, uint64_t w
     xSetDecoratorSeed(xrand, worldseed, chunks[3].x << 4, chunks[3].z << 4, SINGLE_FLOWER_SALT);
     return singleFlowerGenerates(xrand, flowerPosInChunk);
 }
+
+
+// ---------------------------------------------------------
+// the full flower simulation methods (just prototypes here)
+// ---------------------------------------------------------
+
