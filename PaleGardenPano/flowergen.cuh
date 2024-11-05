@@ -160,6 +160,27 @@ __device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, uint64_t w
 
 
 // ---------------------------------------------------------
-// the full flower simulation methods (just prototypes here)
+// the full flower simulation method
 // ---------------------------------------------------------
 
+__device__ inline int addFlowersToChunk(Xoroshiro* xrand, int flowerChunk[7][16], const BlockPos2D& patchCenter)
+{
+    // following mc source code here
+    int counter = 0;
+
+    for (int attempt = 0; attempt < 96 /*yes let's do 576 random calls for some fucking flowers*/; attempt++)
+    {
+		// xNextIntJPO2() - xNextIntJPO2() would be undefined behavior!
+		int x = patchCenter.x + xNextIntJPO2(xrand, 8); x -= xNextIntJPO2(xrand, 8);
+		int y = 3 + xNextIntJPO2(xrand, 4); y -= xNextIntJPO2(xrand, 4);
+		int z = patchCenter.z + xNextIntJPO2(xrand, 8); z -= xNextIntJPO2(xrand, 8);
+
+		if (x < 0 || x >= 16 || z < 0 || z >= 16)
+			continue;
+
+		flowerChunk[y][z] |= 1 << x; // it's a matter of choice how to arrange the bits, this should be easier
+        counter++;
+    }
+
+    return counter;
+}
