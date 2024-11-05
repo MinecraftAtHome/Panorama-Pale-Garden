@@ -3,38 +3,34 @@
 #include <cstdio>
 #include <chrono>
 
-constexpr uint32_t MIN_X = 0;
-constexpr uint32_t MAX_X = 31;
-constexpr uint32_t MIN_Z = 0;
-constexpr uint32_t MAX_Z = 31;
-constexpr uint32_t MIN_Y = 111;
-constexpr uint32_t MAX_Y = 112;
-
 // for initial filter
 constexpr int MAX_RESULTS_1 = 1024 * 1024;
 __device__ uint64_t results1[MAX_RESULTS_1];
 __managed__ int resultID1;
 
 // for secondary filter
-constexpr int MAX_FLOWERS = 32;
-__constant__ BlockPos targetFlowers[MAX_FLOWERS];
-__constant__ int targetFlowerCount;
-__constant__ ChunkPos regionMin, regionMax;
-
-constexpr int MAX_RESULTS_2 = 1024 * 1024; // don't really know how many results to expect
-__managed__ uint64_t results2[MAX_RESULTS_2];
+constexpr int MAX_RESULTS_2 = 65536;
+__device__ uint64_t results2[MAX_RESULTS_2];
 __managed__ int resultID2;
 
+// for secondary & final filter
+constexpr int MAX_FLOWERS = 32;
+constexpr int MAX_AIRBLOCKS = 48;
+__constant__ BlockPos targetFlowers[MAX_FLOWERS];
+__constant__ int targetFlowerCount;
+__constant__ BlockPos targetAirblocks[MAX_AIRBLOCKS];
+__constant__ int targetAirblockCount;
+__constant__ ChunkPos regionMin, regionMax;
+
 // for final filter
-constexpr uint32_t SIZE_I = (MAX_X - MIN_X + 32) / 32;  // x
-constexpr uint32_t SIZE_J = MAX_Y - MIN_Y + 1;          // y
-constexpr uint32_t SIZE_K = MAX_Z - MIN_Z + 1;          // z
-__constant__ uint32_t targetPatternFlowers[SIZE_I][SIZE_J][SIZE_K];
-__constant__ uint32_t targetPatternAirblocks[SIZE_I][SIZE_J][SIZE_K];
+constexpr int MAX_RESULTS_3 = 1024; // not gonna be much stuff here
+__managed__ uint64_t results3[MAX_RESULTS_3];
+__managed__ int resultID3;
 
 
 
-__device__ void initialFilter(uint64_t worldseed)
+
+__device__ void initialFilter(const uint64_t worldseed)
 {
     Xoroshiro xrand = { 0ULL, 0ULL };
 
@@ -75,7 +71,7 @@ __device__ void initialFilter(uint64_t worldseed)
     results1[i] = worldseed;
 }
 
-__device__ void secondaryFilter(uint64_t worldseed)
+__device__ void secondaryFilter(const uint64_t worldseed)
 {
     // create a bitmask for used flowers
     uint32_t usedFlowers = 0;
@@ -125,6 +121,9 @@ __device__ void secondaryFilter(uint64_t worldseed)
     }
 
 	const uint32_t fullMask = (1 << targetFlowerCount) - 1;
+    if (worldseed % 10000 == 0)
+        DEBUG_PRINT("usedFlowers: %x, fullMask: %x, targetFcount %d\n", usedFlowers, fullMask, targetFlowerCount);
+
     if (usedFlowers == fullMask)
     {
 		const int i = atomicAdd(&resultID2, 1);
@@ -135,30 +134,116 @@ __device__ void secondaryFilter(uint64_t worldseed)
     }
 }
 
+__device__ int matchFlowersForChunk(const uint64_t worldseed, const int cx, const int cz)
+{
+    uint32_t matchedFlowerMask = 0;
+    int matchedFlowerCount = 0;
+
+    // now that we're here, generate the flower patches for the chunk and its neighbors
+    for (int dcx = -1; dcx <= 1; dcx++)
+    {
+        for (int dcz = -1; dcz <= 1; dcz++)
+        {
+            Xoroshiro xrand = { 0ULL, 0ULL };
+            const ChunkPos cpos = { cx + dcx, cz + dcz };
+            const uint64_t popseed = xGetPopulationSeed(worldseed, cpos.x << 4, cpos.z << 4);
+            xSetSeed(&xrand, popseed + FLOWER_PATCH_SALT);
+            if (xNextFloat(&xrand) >= 1.0F / 8.0F)
+                continue;
+
+            BlockPos2D patchCenter = { 0, 0 };
+            patchCenter.x = xNextIntJPO2(&xrand, 16);
+            patchCenter.z = xNextIntJPO2(&xrand, 16);
+
+            // empty chunk for the flowers to go in
+            int flowerChunk[7][16] = { 0 }; // x in the integer, y in the first dimension, z in the second dimension
+            if (addFlowersToChunk(&xrand, flowerChunk, patchCenter) == 0)
+                continue;
+
+            // try to fit the y-value so that air blocks match
+            int forbiddenY = 0;
+
+            // do air blocks first, eliminating some y values
+            for (int i = 0; i < targetAirblockCount; i++)
+            {
+                const BlockPos airblock = targetAirblocks[i];
+                if ((airblock.x >> 4) != cx || (airblock.z >> 4) != cz)
+                    continue;
+
+                const BlockPos2D airblockInChunk = { airblock.x & 0xf, airblock.z & 0xf };
+                for (int y = 0; y < 7; y++)
+                {
+                    if (flowerChunk[y][airblockInChunk.z] & (1 << airblockInChunk.x))
+                        forbiddenY |= 1 << y;
+                }
+            }
+
+            // if there are no possible y values, this chunk cannot affect the original chunk's generation
+            if (forbiddenY == (1 << 7) - 1)
+                continue;
+
+			// iterate over non-forbidden y values
+			for (int y = 0; y < 7; y++)
+			{
+				if (forbiddenY & (1 << y))
+					continue;
+
+				// mark all the flowers that could match the pattern at this y level as OK
+                // this is a huge simplification, however this way we're avoiding
+				// the pseudo-exponential complexity of exact matching
+
+				for (int i = 0; i < targetFlowerCount; i++)
+				{
+                    const BlockPos flower = targetFlowers[i];
+					if ((flower.x >> 4) != cx || flower.z >> 4 != cz)
+					    continue;
+
+					const BlockPos2D flowerInChunk = { flower.x & 0xf, flower.z & 0xf };
+
+					if (flowerChunk[y][flowerInChunk.z] & (1 << flowerInChunk.x))
+					{
+						if ((matchedFlowerMask & (1 << i)) != 0)
+						    continue;
+						matchedFlowerMask |= 1 << i;
+						matchedFlowerCount++;
+					}
+				}
+			}
+        }
+    }
+
+	return matchedFlowerCount;
+}
+
 __device__ void finalFilter(uint64_t worldseed)
 {
-    // the target flower arrangement, as well as the target known air block arrangement,
-    // are stored in gpu constant memory as 3D integer arrays. Each bit maps to a certain
-    // block coordinate, as shown below:
+    for (int cx = regionMin.x; cx <= regionMax.x; cx++)
+    {
+        for (int cz = regionMin.z; cz <= regionMax.z; cz++)
+        {
+            // count target flowers that lie within the chunk
 
-    // (block Y is the third dimension)
-    // -------------------------------------> block X
-    // | [0100...10][0100...10][0100...10]
-    // | [0100...10][0100...10][0100...10]
-    // | ...
-    // | [0100...10][0100...10][0100...10]
-    // | [0100...10][0100...10][0100...10]
-    // v
-    // block Z
+            int targetsInChunk = 0;
+            for (int i = 0; i < targetFlowerCount; i++)
+            {
+                const BlockPos flower = targetFlowers[i];
+				if ((flower.x >> 4) == cx && (flower.z >> 4) == cz)
+					targetsInChunk++;
+            }
+            if (targetsInChunk == 0) 
+                continue; // not wasting time
 
-    // the coordinates are not mapped directly, to access the block at (X, Y, Z), we need
-    // to subtract (Xmin, Ymin, Zmin) first and only then access the correct integer's bit.
+            int matchedFlowers = matchFlowersForChunk(worldseed, cx, cz);
 
-    // The second filter's job is to generate the flower positions for all chunks that could generate
-    // the visible flowers, match the y-heights of the generated flowers to minimize the error rate,
-    // and ultimately only leave in seeds for which the minimum error is below an arbitrary threashold.
+			if (matchedFlowers != targetsInChunk)
+				return; // not enough flowers in the chunk	
+        }
+    }
 
-    // TODO how the fuck do i even start
+	const int i = atomicAdd(&resultID3, 1);
+	if (i >= MAX_RESULTS_3)
+		printf("DEVICE ERROR: too many results from final filter!\n");
+	results3[i] = worldseed;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -183,11 +268,20 @@ __global__ void crackTextSeedPart2()
     int tid = threadIdx.x + blockDim.x * blockIdx.x;
     if (tid >= resultID1) return;
 
-    uint64_t worldseed = results1[tid];
+    const uint64_t worldseed = results1[tid];
 
     secondaryFilter(worldseed);
 }
 
+__global__ void crackTextSeedPart3()
+{
+    int tid = threadIdx.x + blockDim.x * blockIdx.x;
+    if (tid >= resultID2) return;
+
+    const uint64_t worldseed = results2[tid];
+
+    finalFilter(worldseed);
+}
 
 
 int setupConstantMemory()
@@ -197,7 +291,8 @@ int setupConstantMemory()
         HOST_ERROR("couldn't open input file");
 
     BlockPos flowers[MAX_FLOWERS];
-    int flowerCount = 0;
+    BlockPos airblocks[MAX_AIRBLOCKS];
+    int flowerCount = 0, airblockCount = 0;
 
     BlockPos2D posMin = { INT_MAX, INT_MAX };
     BlockPos2D posMax = { INT_MIN, INT_MIN };
@@ -213,8 +308,21 @@ int setupConstantMemory()
 
     fclose(fptr);
 
+    fptr = fopen("data/airblocks.txt", "r");
+    if (fptr == NULL)
+        HOST_ERROR("couldn't open input file");
+
+    while (airblockCount < MAX_AIRBLOCKS && fscanf(fptr, "%d%d%d", &(airblocks[airblockCount].x), &(airblocks[airblockCount].y), &(airblocks[airblockCount].z)) == 3)
+		airblockCount++;
+
+    fclose(fptr);
+
+	DEBUG_PRINT("flowerCount: %d, airblockCount: %d\n", flowerCount, airblockCount);
+
 	CHECKED_OPERATION( cudaMemcpyToSymbol(targetFlowers, flowers, sizeof(BlockPos) * flowerCount) );
     CHECKED_OPERATION( cudaMemcpyToSymbol(targetFlowerCount, &flowerCount, sizeof(int)) );
+    CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblocks, airblocks, sizeof(BlockPos) * airblockCount));
+    CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblockCount, &airblockCount, sizeof(int)));
 
 	// calculate the bounds for the region of relevant chunks
 	ChunkPos regionMin_H = { (posMin.x - 7) >> 4, (posMin.z - 7) >> 4 };
@@ -226,9 +334,9 @@ int setupConstantMemory()
 	return 0;
 }
 
-int main()
+int runCracker()
 {
-    CHECKED_OPERATION( cudaSetDevice(0) );
+    CHECKED_OPERATION(cudaSetDevice(0));
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -237,33 +345,46 @@ int main()
 
     resultID1 = 0;
     resultID2 = 0;
+    resultID3 = 0;
 
     const int THREADS_PER_BLOCK = 512;
 
     const int NUM_BLOCKS_1 = (TEXT_SEEDS_TOTAL + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    crackTextSeedPart1 <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >>> ();
-    CHECKED_OPERATION( cudaGetLastError() );
-    CHECKED_OPERATION( cudaDeviceSynchronize() );
-
-	const int NUM_BLOCKS_2 = (resultID1 + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    crackTextSeedPart2 <<< NUM_BLOCKS_2, THREADS_PER_BLOCK >>> ();
+    crackTextSeedPart1 <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >> > ();
     CHECKED_OPERATION(cudaGetLastError());
     CHECKED_OPERATION(cudaDeviceSynchronize());
-
     printf("After filter 1: %d\n", resultID1);
-    printf("After filter 2: %d\n\n", resultID2);
 
-	for (int i = 0; i < resultID2; i++)
-	{
-        printSignedSeed(results2[i]);
-	}
+    const int NUM_BLOCKS_2 = (resultID1 + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    crackTextSeedPart2 <<< NUM_BLOCKS_2, THREADS_PER_BLOCK >> > ();
+    CHECKED_OPERATION(cudaGetLastError());
+    CHECKED_OPERATION(cudaDeviceSynchronize());
+    printf("After filter 2: %d\n", resultID2);
+
+    const int NUM_BLOCKS_3 = (resultID2 + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    crackTextSeedPart3 <<< NUM_BLOCKS_3, THREADS_PER_BLOCK >>> ();
+    CHECKED_OPERATION(cudaGetLastError());
+    CHECKED_OPERATION(cudaDeviceSynchronize());
+    printf("After filter 3: %d\n\n", resultID3);
+
+    for (int i = 0; i < resultID3; i++)
+    {
+        printSignedSeed(results3[i]);
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = end - start;
     double ms = (double)elapsed.count() / 1000000.0;
     printf("\nKernel took %lf ms\n", ms);
 
-    CHECKED_OPERATION( cudaDeviceReset() );
+    CHECKED_OPERATION(cudaDeviceReset());
 
     return 0;
+}
+
+
+
+int main()
+{
+	return runCracker();
 }

@@ -1,6 +1,9 @@
 #pragma once
 #include <cstdio>
 
+#define DEBUG 0
+
+
 #define CHECKED_OPERATION(function) \
 { \
     cudaError_t cudaStatus = function; \
@@ -14,4 +17,9 @@
 { \
 	fprintf(stderr, "HOST ERROR (%s, line %d) : %s\n", __FILE__, __LINE__, msg); \
 	return 1; \
+}
+
+#define DEBUG_PRINT(...) \
+{ \
+	if (DEBUG) printf(__VA_ARGS__); \
 }
