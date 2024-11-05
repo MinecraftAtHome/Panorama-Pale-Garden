@@ -265,8 +265,10 @@ __host__ __device__ inline void xSetDecoratorSeed(Xoroshiro* xr, uint64_t worldS
     xSetSeed(xr, populationSeed + salt);
 }
 
-__host__ __device__ inline uint64_t xGetPopulationSeed(Xoroshiro* xr, uint64_t worldSeed, int blockX, int blockZ) 
+__host__ __device__ inline uint64_t xGetPopulationSeed(uint64_t worldSeed, int blockX, int blockZ) 
 {
+	Xoroshiro xrnd = { 0ULL, 0ULL };
+	Xoroshiro* xr = &xrnd;
     xSetSeed(xr, worldSeed);
     uint64_t l = xNextLongJ(xr) | 1ULL;
     uint64_t m = xNextLongJ(xr) | 1ULL;

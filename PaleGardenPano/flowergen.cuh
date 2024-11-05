@@ -20,7 +20,37 @@ struct Pos3 {
     int z;
 };
 
+// --------------------------------------
+// getters
+// --------------------------------------
 
+__device__ inline bool getFlowerGenOrigin(uint64_t populationSeed, const ChunkPos& chunkPos, BlockPos2D *resultPtr)
+{
+	Xoroshiro xrand = { 0ULL, 0ULL };
+	xSetSeed(&xrand, populationSeed + FLOWER_PATCH_SALT);
+
+	// rarity filter (chance = 8)
+	if (xNextFloat(&xrand) >= 1.0F / 8.0F)
+		return false;
+
+	resultPtr->x = xNextIntJPO2(&xrand, 16) + (chunkPos.x << 4);
+	resultPtr->z = xNextIntJPO2(&xrand, 16) + (chunkPos.z << 4);
+	return true;
+}
+
+__device__ inline bool getSingleFlower(uint64_t populationSeed, const ChunkPos& chunkPos, BlockPos2D* resultPtr)
+{
+    Xoroshiro xrand = { 0ULL, 0ULL };
+	xSetSeed(&xrand, populationSeed + SINGLE_FLOWER_SALT);
+
+    // rarity filter (chance = 32)
+    if (xNextFloat(&xrand) >= 1.0F / 32.0F)
+        return false;
+
+    resultPtr->x = xNextIntJPO2(&xrand, 16) + (chunkPos.x << 4);
+    resultPtr->z = xNextIntJPO2(&xrand, 16) + (chunkPos.z << 4);
+    return true;
+}
 
 // --------------------------------------
 // simple checks
@@ -30,7 +60,7 @@ __device__ inline bool singleFlowerGenerates(Xoroshiro* xrand, const BlockPos2D&
 {
     // rarity filter (chance = 32)
     const float r = xNextFloat(xrand);
-    if (!(r < 1.0F / 32.0F))
+    if (r >= 1.0F / 32.0F)
         return false;
 
     // inSquarePlacement -- test coords
@@ -74,7 +104,7 @@ __device__ inline bool patchGeneratesNearPos(Xoroshiro* xrand, const BlockPos2D&
 {
     // rarity filter (chance = 8)
     const float r = xNextFloat(xrand);
-    if (!(r < 1.0F / 8.0F))
+    if (r >= 1.0F / 8.0F)
         return false;
 
     // in-square placement
@@ -108,7 +138,7 @@ __device__ inline bool conditionalCheckNearPos(Xoroshiro* xrand, uint64_t worlds
 
 __device__ inline bool testFlowerInChunkUnconditional(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos& chunkPos, const BlockPos2D& flowerPosInChunk)
 {
-    uint64_t popseed = xGetPopulationSeed(xrand, worldseed, (chunkPos.x << 4), (chunkPos.z << 4));
+    uint64_t popseed = xGetPopulationSeed(worldseed, (chunkPos.x << 4), (chunkPos.z << 4));
 
     xSetSeed(xrand, popseed + FLOWER_PATCH_SALT);
     if (patchGeneratesNearPos(xrand, { (chunkPos.x << 4) + flowerPosInChunk.x, (chunkPos.z << 4) + flowerPosInChunk.z }, chunkPos))
