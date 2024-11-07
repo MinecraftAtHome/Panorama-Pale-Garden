@@ -148,6 +148,10 @@ __device__ inline bool testFlowerInChunkUnconditional(Xoroshiro* xrand, uint64_t
     return singleFlowerGenerates(xrand, flowerPosInChunk);
 }
 
+
+// helper macro
+#define QUAD_CHUNK(x, z, dirX, dirZ) { { x + dirX, z + dirZ }, { x + dirX, z }, { x, z + dirZ }, { x, z } }
+
 __device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos chunks[], const BlockPos2D& flowerPosInChunk)
 {
     if (conditionalCheckNearPos(xrand, worldseed, chunks, { (chunks[3].x << 4) + flowerPosInChunk.x, (chunks[3].z << 4) + flowerPosInChunk.z }))
@@ -163,7 +167,7 @@ __device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, uint64_t w
 // the full flower simulation method
 // ---------------------------------------------------------
 
-__device__ inline int addFlowersToChunk(Xoroshiro* xrand, int flowerChunk[7][16], const BlockPos2D& patchCenter)
+__device__ inline int addFlowersToChunk(Xoroshiro* xrand, int flowerChunk[7][16], const BlockPos2D& patchCenter, const int dcx, const int dcz)
 {
     // following mc source code here
     int counter = 0;
@@ -171,9 +175,9 @@ __device__ inline int addFlowersToChunk(Xoroshiro* xrand, int flowerChunk[7][16]
     for (int attempt = 0; attempt < 96 /*yes let's do 576 random calls for some fucking flowers*/; attempt++)
     {
 		// xNextIntJPO2() - xNextIntJPO2() would be undefined behavior!
-		int x = patchCenter.x + xNextIntJPO2(xrand, 8); x -= xNextIntJPO2(xrand, 8);
+		int x = (dcx << 4) + patchCenter.x + xNextIntJPO2(xrand, 8); x -= xNextIntJPO2(xrand, 8);
 		int y = 3 + xNextIntJPO2(xrand, 4); y -= xNextIntJPO2(xrand, 4);
-		int z = patchCenter.z + xNextIntJPO2(xrand, 8); z -= xNextIntJPO2(xrand, 8);
+		int z = (dcz << 4) + patchCenter.z + xNextIntJPO2(xrand, 8); z -= xNextIntJPO2(xrand, 8);
 
 		if (x < 0 || x >= 16 || z < 0 || z >= 16)
 			continue;
