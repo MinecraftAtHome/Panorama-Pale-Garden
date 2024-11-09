@@ -242,7 +242,7 @@ __device__ void finalFilter(uint64_t worldseed)
 
             int matchedFlowers = matchFlowersForChunk(worldseed, cx, cz);
 
-			if (matchedFlowers < targetsInChunk)
+            if (matchedFlowers < targetsInChunk)
 				return; // not enough flowers in the chunk	
         }
     }
@@ -428,50 +428,64 @@ static int runCrackerRandomSeeds(int runStart, int runEnd)
     if (setupConstantMemory() != 0)
         return 1;
 
+#ifdef STATS
     auto startGlobal = std::chrono::steady_clock::now();
     auto start = std::chrono::steady_clock::now();
+    //double ms1 = 0.0, ms2 = 0.0, ms3 = 0.0;
+#endif
 
     for (int run = runStart; run < runEnd; run++)
     {
+#ifdef STATS
         if (run % RUNS_PER_PRINT == 0)
         {
             start = std::chrono::steady_clock::now();
             printf(" --- Run %d / %d\n", run + 1, NUM_RUNS_RANDOM_SEEDS);
         }
+#endif
 			
         resultID1 = 0;
         resultID2 = 0;
         resultID3 = 0;
 
         const int THREADS_PER_BLOCK = 512;
-
         const int NUM_BLOCKS_1 = (THREADS_LAUNCHED_PER_RUN + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+        //auto s1 = std::chrono::steady_clock::now();
         crackRandomSeedPart1 << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > (run * THREADS_LAUNCHED_PER_RUN);
         CHECKED_OPERATION(cudaGetLastError());
         CHECKED_OPERATION(cudaDeviceSynchronize());
-        //printf("After filter 1: %d\n", resultID1);
+        //auto e1 = std::chrono::steady_clock::now();
+        //ms1 += (e1 - s1).count() / 1000000.0;
 
         const int NUM_BLOCKS_2 = (resultID1 + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-        crackSeedPart2 << < NUM_BLOCKS_2, THREADS_PER_BLOCK >> > ();
         if (NUM_BLOCKS_2 == 0)
             continue;
+
+        //auto s2 = std::chrono::steady_clock::now(); 
+        crackSeedPart2 << < NUM_BLOCKS_2, THREADS_PER_BLOCK >> > ();
         CHECKED_OPERATION(cudaGetLastError());
         CHECKED_OPERATION(cudaDeviceSynchronize());
-        //printf("After filter 2: %d\n", resultID2);
+        //auto e2 = std::chrono::steady_clock::now();
+        //ms2 += (e2 - s2).count() / 1000000.0;
 
         const int NUM_BLOCKS_3 = (resultID2 + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
         if (NUM_BLOCKS_3 == 0)
             continue;
+
+        //auto s3 = std::chrono::steady_clock::now();
         crackSeedPart3 << < NUM_BLOCKS_3, THREADS_PER_BLOCK >> > ();
         CHECKED_OPERATION(cudaGetLastError());
         CHECKED_OPERATION(cudaDeviceSynchronize());
-        //printf("After filter 3: %d\n\n", resultID3);
+        //auto e3 = std::chrono::steady_clock::now();
+        //ms3 += (e3 - s3).count() / 1000000.0;
 
         for (int i = 0; i < resultID3; i++)
         {
             printSignedSeed(results3[i]);
         }
 
+#ifdef STATS
         if (run % RUNS_PER_PRINT == RUNS_PER_PRINT - 1)
         {
             auto end = std::chrono::steady_clock::now();
@@ -487,19 +501,26 @@ static int runCrackerRandomSeeds(int runStart, int runEnd)
             int hrs = (int)floor(eta_h);
             fprintf(stderr, "ETA: %d HRS %d MIN %d SEC\n", hrs, min, sec);
         }
+#endif
     }
 
     CHECKED_OPERATION(cudaDeviceReset());
 
+#ifdef STATS
     auto endGlobal = std::chrono::steady_clock::now();
     auto elapsedGlobal = endGlobal - startGlobal;
     double seconds = (double)elapsedGlobal.count() / 1000000.0 / 1000.0;
-    printf("Runs took %lf seconds\n", seconds);
+    printf("Runs took %lf seconds in total:\n", seconds);
+
+    //printf("Filter 1: %lf sec\n", ms1 / 1000.0);
+    //printf("Filter 2: %lf sec\n", ms2 / 1000.0);
+    //printf("Filter 3: %lf sec\n", ms3 / 1000.0);
 
     double minutesFull = seconds / 60.0 * NUM_RUNS_RANDOM_SEEDS / (runEnd - runStart);
     int min = (int)floor(minutesFull) % 60;
     int hrs = (int)floor(minutesFull / 60.0);
-    printf("Estimated runtime for full seedspace: %d hours %d minutes\n", hrs, min);
+    printf("\nEstimated runtime for full seedspace: %d hours %d minutes\n", hrs, min);
+#endif
 
     return 0;
 }
