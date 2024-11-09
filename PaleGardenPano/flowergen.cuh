@@ -20,9 +20,28 @@ struct Pos3 {
     int z;
 };
 
+typedef struct SeedConstants SeedConstants;
+struct SeedConstants {
+    uint64_t worldseed;
+    uint64_t A; // gets multiplied by chunk x in population seeding
+    uint64_t B; // gets multiplied by chunk z in population seeding
+};
+
 // --------------------------------------
-// getters
+// helper functions
 // --------------------------------------
+
+__device__ inline uint64_t getPopulationSeedFast(const SeedConstants& sc, const int chunkX, const int chunkZ)
+{
+    const uint64_t popseed = sc.A * chunkX + sc.B * chunkZ ^ sc.worldseed;
+    return popseed;
+}
+
+__device__ inline uint64_t getPopulationSeedFast(const SeedConstants& sc, const ChunkPos& chunkPos)
+{
+    const uint64_t popseed = sc.A * chunkPos.x + sc.B * chunkPos.z ^ sc.worldseed;
+    return popseed;
+}
 
 __device__ inline bool getFlowerGenOrigin(uint64_t populationSeed, const ChunkPos& chunkPos, BlockPos2D *resultPtr)
 {
@@ -115,30 +134,30 @@ __device__ inline bool patchGeneratesNearPos(Xoroshiro* xrand, const BlockPos2D&
     return centerX - 7 <= pos.x && pos.x <= centerX + 7 && centerZ - 7 <= pos.z && pos.z <= centerZ + 7;
 }
 
-__device__ inline bool conditionalCheckNearPos(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos chunkCoords[], const BlockPos2D& pos)
-{
-    // if no flower patch in chunks (0), (1), (2) then 
-    // there must be a patch in chunk (3)
-
-#pragma unroll
-    for (int i = 0; i < 3; i++)
-    {
-        xSetDecoratorSeed(xrand, worldseed, chunkCoords[i].x << 4, chunkCoords[i].z << 4, FLOWER_PATCH_SALT);
-        if (patchGeneratesNearPos(xrand, pos, chunkCoords[i])) return true; // false -> any <=> true
-    }
-
-    xSetDecoratorSeed(xrand, worldseed, chunkCoords[3].x << 4, chunkCoords[3].z << 4, FLOWER_PATCH_SALT);
-    return patchGeneratesNearPos(xrand, pos, chunkCoords[3]);
-}
+//__device__ inline bool conditionalCheckNearPos(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos chunkCoords[], const BlockPos2D& pos)
+//{
+//    // if no flower patch in chunks (0), (1), (2) then 
+//    // there must be a patch in chunk (3)
+//
+//#pragma unroll
+//    for (int i = 0; i < 3; i++)
+//    {
+//        xSetDecoratorSeed(xrand, worldseed, chunkCoords[i].x << 4, chunkCoords[i].z << 4, FLOWER_PATCH_SALT);
+//        if (patchGeneratesNearPos(xrand, pos, chunkCoords[i])) return true; // false -> any <=> true
+//    }
+//
+//    xSetDecoratorSeed(xrand, worldseed, chunkCoords[3].x << 4, chunkCoords[3].z << 4, FLOWER_PATCH_SALT);
+//    return patchGeneratesNearPos(xrand, pos, chunkCoords[3]);
+//}
 
 
 // --------------------------------------
 // complete filters
 // --------------------------------------
 
-__device__ inline bool testFlowerInChunkUnconditional(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos& chunkPos, const BlockPos2D& flowerPosInChunk)
+__device__ inline bool testFlowerInChunkUnconditional(Xoroshiro* xrand, const SeedConstants& sc, const ChunkPos& chunkPos, const BlockPos2D& flowerPosInChunk)
 {
-    uint64_t popseed = xGetPopulationSeed(worldseed, (chunkPos.x << 4), (chunkPos.z << 4));
+    const uint64_t popseed = getPopulationSeedFast(sc, chunkPos);
 
     xSetSeed(xrand, popseed + FLOWER_PATCH_SALT);
     if (patchGeneratesNearPos(xrand, { (chunkPos.x << 4) + flowerPosInChunk.x, (chunkPos.z << 4) + flowerPosInChunk.z }, chunkPos))
@@ -152,13 +171,28 @@ __device__ inline bool testFlowerInChunkUnconditional(Xoroshiro* xrand, uint64_t
 // helper macro
 #define QUAD_CHUNK(x, z, dirX, dirZ) { { x + dirX, z + dirZ }, { x + dirX, z }, { x, z + dirZ }, { x, z } }
 
-__device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, uint64_t worldseed, const ChunkPos chunks[], const BlockPos2D& flowerPosInChunk)
+__device__ inline bool testFlowerInChunkConditional(Xoroshiro* xrand, const SeedConstants& sc, const ChunkPos chunks[], const BlockPos2D& flowerPosInChunk)
 {
-    if (conditionalCheckNearPos(xrand, worldseed, chunks, { (chunks[3].x << 4) + flowerPosInChunk.x, (chunks[3].z << 4) + flowerPosInChunk.z }))
+    const BlockPos2D flowerPos = { (chunks[3].x << 4) + flowerPosInChunk.x, (chunks[3].z << 4) + flowerPosInChunk.z };
+
+    // if no flower patch in chunks (0), (1), (2) then 
+    // there must be a patch in chunk (3)
+
+    #pragma unroll
+    for (int i = 0; i < 3; i++)
+    {
+        xSetSeed(xrand, getPopulationSeedFast(sc, chunks[i]) + FLOWER_PATCH_SALT);
+        if (patchGeneratesNearPos(xrand, flowerPos, chunks[i])) return true; // false -> any <=> true
+    }
+
+    const uint64_t popseedTargetChunk = getPopulationSeedFast(sc, chunks[3]);
+    
+    xSetSeed(xrand, popseedTargetChunk + FLOWER_PATCH_SALT);
+    if (patchGeneratesNearPos(xrand, flowerPos, chunks[3]))
         return true;
 
     // try single flower (pretty hopeless but whatever)
-    xSetDecoratorSeed(xrand, worldseed, chunks[3].x << 4, chunks[3].z << 4, SINGLE_FLOWER_SALT);
+    xSetSeed(xrand, popseedTargetChunk + SINGLE_FLOWER_SALT);
     return singleFlowerGenerates(xrand, flowerPosInChunk);
 }
 

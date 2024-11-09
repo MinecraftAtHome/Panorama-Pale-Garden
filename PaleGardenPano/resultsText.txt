@@ -1,0 +1,251 @@
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 907.065400 ms
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 859.664200 ms
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 815.959900 ms
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 820.473500 ms
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 834.033600 ms
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 838.305700 ms
+
+ --- Run 1 / 131072
+ --- Run 11 / 131072
+ --- Run 21 / 131072
+ --- Run 31 / 131072
+ --- Run 41 / 131072
+ --- Run 51 / 131072
+ --- Run 61 / 131072
+ --- Run 71 / 131072
+ --- Run 81 / 131072
+ --- Run 91 / 131072
+Runs took 40.953947 seconds
+ --- Run 10001 / 131072
+ --- Run 10011 / 131072
+ --- Run 10001 / 131072
+ --- Run 10011 / 131072
+ --- Run 10021 / 131072
+ --- Run 10031 / 131072
+ --- Run 10041 / 131072
+ --- Run 10051 / 131072
+ --- Run 10061 / 131072
+ --- Run 10071 / 131072
+ --- Run 10081 / 131072
+ --- Run 10091 / 131072
+Runs took 41.828935 seconds
+ --- Run 1 / 131072
+ --- Run 11 / 131072
+ --- Run 21 / 131072
+ --- Run 31 / 131072
+ --- Run 41 / 131072
+ --- Run 51 / 131072
+ --- Run 61 / 131072
+ --- Run 71 / 131072
+ --- Run 81 / 131072
+ --- Run 91 / 131072
+Runs took 40.759678 seconds
+Estimated runtime for full seedspace: 14 hours 50 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 20.544924 seconds
+Estimated runtime for full seedspace: 14 hours 57 minutes
+ --- Run 50001 / 262144
+ --- Run 50011 / 262144
+ --- Run 50021 / 262144
+ --- Run 50031 / 262144
+ --- Run 50041 / 262144
+Runs took 10.328608 seconds
+Estimated runtime for full seedspace: 15 hours 2 minutes
+ --- Run 50001 / 65536
+ --- Run 50011 / 65536
+Runs took 16.283975 seconds
+Estimated runtime for full seedspace: 14 hours 49 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+Runs took 15.817979 seconds
+Estimated runtime for full seedspace: 28 hours 47 minutes
+ --- Run 50001 / 262144
+ --- Run 50011 / 262144
+Runs took 4.229506 seconds
+Estimated runtime for full seedspace: 15 hours 23 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+Runs took 8.247744 seconds
+Estimated runtime for full seedspace: 15 hours 0 minutes
+ --- Run 50001 / 65536
+ --- Run 50011 / 65536
+Runs took 16.500765 seconds
+Estimated runtime for full seedspace: 15 hours 1 minutes
+ --- Run 50001 / 262144
+ --- Run 50011 / 262144
+Runs took 7.949630 seconds
+Estimated runtime for full seedspace: 28 hours 56 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+Runs took 7.854551 seconds
+Estimated runtime for full seedspace: 14 hours 17 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+Runs took 7.943314 seconds
+Estimated runtime for full seedspace: 14 hours 27 minutes
+ --- Run 50001 / 262144
+ --- Run 50011 / 262144
+Runs took 4.071512 seconds
+Estimated runtime for full seedspace: 14 hours 49 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+Runs took 7.878306 seconds
+Estimated runtime for full seedspace: 14 hours 20 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+ --- Run 50051 / 131072
+ --- Run 50061 / 131072
+ --- Run 50071 / 131072
+ --- Run 50081 / 131072
+ --- Run 50091 / 131072
+Runs took 38.853119 seconds
+Estimated runtime for full seedspace: 14 hours 8 minutes
+ --- Run 50001 / 262144
+ --- Run 50011 / 262144
+ --- Run 50021 / 262144
+ --- Run 50031 / 262144
+ --- Run 50041 / 262144
+ --- Run 50051 / 262144
+ --- Run 50061 / 262144
+ --- Run 50071 / 262144
+ --- Run 50081 / 262144
+ --- Run 50091 / 262144
+Runs took 19.627348 seconds
+Estimated runtime for full seedspace: 14 hours 17 minutes
+ --- Run 50001 / 65536
+ --- Run 50011 / 65536
+ --- Run 50021 / 65536
+ --- Run 50031 / 65536
+ --- Run 50041 / 65536
+ --- Run 50051 / 65536
+ --- Run 50061 / 65536
+ --- Run 50071 / 65536
+ --- Run 50081 / 65536
+ --- Run 50091 / 65536
+Runs took 78.691035 seconds
+Estimated runtime for full seedspace: 14 hours 19 minutes
+After filter 1: 583114
+After filter 2: 43
+After filter 3: 0
+
+
+Kernel took 834.716000 ms
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.198866 seconds
+Estimated runtime for full seedspace: 13 hours 58 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.300068 seconds
+Estimated runtime for full seedspace: 14 hours 3 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.396607 seconds
+Estimated runtime for full seedspace: 14 hours 7 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.362289 seconds
+Estimated runtime for full seedspace: 14 hours 5 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.325739 seconds
+Estimated runtime for full seedspace: 14 hours 4 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.515539 seconds
+Estimated runtime for full seedspace: 14 hours 12 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.534007 seconds
+Estimated runtime for full seedspace: 14 hours 13 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.471181 seconds
+Estimated runtime for full seedspace: 14 hours 10 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.575698 seconds
+Estimated runtime for full seedspace: 14 hours 15 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.585209 seconds
+Estimated runtime for full seedspace: 14 hours 15 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 50021 / 131072
+ --- Run 50031 / 131072
+ --- Run 50041 / 131072
+Runs took 19.509477 seconds
+Estimated runtime for full seedspace: 14 hours 12 minutes
+ --- Run 50001 / 131072
+ --- Run 50011 / 131072
+ --- Run 1 / 131072
+Runs took 38.874414 seconds
+Estimated runtime for full seedspace: 14 hours 9 minutes
