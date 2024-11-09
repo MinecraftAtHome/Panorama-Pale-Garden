@@ -31,8 +31,20 @@ constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN
 //constexpr uint64_t CORRECT_SEED = 719929476363093545LL;
 // -----------------------------------------------
 // supertest - a shitton of random flowers
-#define TEST_FILE_FLOWERS "data/rstest/t6_big.txt"
-constexpr uint64_t CORRECT_SEED = 4243907523119604105LL;
+//#define TEST_FILE_FLOWERS "data/rstest/t6_big.txt"
+//constexpr uint64_t CORRECT_SEED = 4243907523119604105LL;
+// -----------------------------------------------
+// supertest #2 - maximum size
+//#define TEST_FILE_FLOWERS "data/rstest/t7_max.txt"
+//constexpr uint64_t CORRECT_SEED = -2385567111971732643LL;
+// -----------------------------------------------
+// supertest #3 - maximum size
+//#define TEST_FILE_FLOWERS "data/rstest/t8_max.txt"
+//constexpr uint64_t CORRECT_SEED = 6199487863832639085LL;
+// -----------------------------------------------
+// supertest #4 - maximum size, most from patch extremes
+//#define TEST_FILE_FLOWERS "data/rstest/t9_max.txt"
+//constexpr uint64_t CORRECT_SEED = 3151648800121342591LL;
 // -----------------------------------------------
 
 
