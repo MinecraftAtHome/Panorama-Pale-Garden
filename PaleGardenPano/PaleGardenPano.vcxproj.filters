@@ -12,11 +12,6 @@
     <Text Include="resultsRun2.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="NewFilter1">
-      <UniqueIdentifier>{25e0186e-3782-452f-adab-ebbaedba219b}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="randomSeedTest.cu" />
+    <CudaCompile Include="main.cu" />
   </ItemGroup>
 </Project>

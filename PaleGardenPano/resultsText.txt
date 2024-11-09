@@ -594,3 +594,33 @@ Filter 2 kept correct seed!
 Filter 3 kept correct seed!
 4243907523119604105
 
+Testing the correct seed!
+Filter 1 kept correct seed!
+Filter 2 kept correct seed!
+Filter 3 kept correct seed!
+-2385567111971732643
+
+Testing the correct seed!
+Filter 1 kept correct seed!
+Filter 2 kept correct seed!
+Filter 3 kept correct seed!
+6192124465221507327
+6196745854858805631
+6199487863832639085
+6204861040463555700
+
+Testing the correct seed!
+Filter 1 kept correct seed!
+Filter 2 kept correct seed!
+Filter 3 kept correct seed!
+6199487863832639085
+
+Testing the correct seed!
+Filter 1 kept correct seed!
+Filter 2 kept correct seed!
+Filter 3 kept correct seed!
+3151648800121342591
+
+Found good seed!!!
+Total candidates: 581410
+Kernel took 779.674100 ms

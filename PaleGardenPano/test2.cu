@@ -11,24 +11,30 @@ __device__ void testWorldseed(uint64_t worldseed)
 {
     Xoroshiro xrand = { 0ULL, 0ULL };
 
-    if (!testFlowerInChunkUnconditional(&xrand, worldseed, { 630, 478 }, { 7, 8 }))
+    // calculate shared constants
+    SeedConstants sc = { worldseed, 0ULL, 0ULL };
+    xSetSeed(&xrand, worldseed);
+    sc.A = (xNextLongJ(&xrand) | 1ULL) << 4;
+    sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
+
+    if (!testFlowerInChunkUnconditional(&xrand, sc, { 630, 478 }, { 7, 8 }))
         return;
 
     // conditional filters
 
     const ChunkPos chunks1[] = { {626, 479},   {627, 479},   {627, 480},   {626, 480} };
     const BlockPos2D flower1 = { 11, 5 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks1, flower1))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
         return;
 
     const ChunkPos chunks2[] = { {627, 477},   {627, 477},   {627, 477},   {627, 478} };
     const BlockPos2D flower2 = { 7, 2 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks2, flower2))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
         return;
 
     const ChunkPos chunks3[] = { {632, 472},   {632, 472},   {632, 472},   {631, 472} };
     const BlockPos2D flower3 = { 15, 7 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks3, flower3))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks3, flower3))
         return;
 
     // TODO add full check
