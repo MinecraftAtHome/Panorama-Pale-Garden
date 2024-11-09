@@ -11,59 +11,71 @@ __device__ uint64_t results1[MAX_RESULTS_1];
 __managed__ int resultID1;
 
 // for secondary filter
-constexpr int MAX_RESULTS_2 = 65536;
+constexpr int MAX_RESULTS_2 = 8192;
 __device__ uint64_t results2[MAX_RESULTS_2];
 __managed__ int resultID2;
 
 // for secondary & final filter
 constexpr int MAX_FLOWERS = 32;
-constexpr int MAX_AIRBLOCKS = 48;
+//constexpr int MAX_AIRBLOCKS = 48;
 __constant__ BlockPos targetFlowers[MAX_FLOWERS];
 __constant__ int targetFlowerCount;
-__constant__ BlockPos targetAirblocks[MAX_AIRBLOCKS];
-__constant__ int targetAirblockCount;
+//__constant__ BlockPos targetAirblocks[MAX_AIRBLOCKS];
+//__constant__ int targetAirblockCount;
 __constant__ ChunkPos regionMin, regionMax;
 
 // for final filter
-constexpr int MAX_RESULTS_3 = 1024; // not gonna be much stuff here
+constexpr int MAX_RESULTS_3 = 256; // not gonna be much stuff here
 __managed__ uint64_t results3[MAX_RESULTS_3];
 __managed__ int resultID3;
 
 
-
-
-__device__ void initialFilter(const uint64_t worldseed)
+__device__ inline void initialFilter(const uint64_t worldseed)
 {
     Xoroshiro xrand = { 0ULL, 0ULL };
+
+    // calculate shared constants
+    SeedConstants sc = { worldseed, 0ULL, 0ULL };
+    xSetSeed(&xrand, worldseed);
+    sc.A = (xNextLongJ(&xrand) | 1ULL) << 4;
+    sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // first filters - boolean flower generation parameters
     // hardcoded for efficiency, keep in mind while debugging
 
     // in chunk (191, 20): flower patch (or unlikely single flower at 7,8)
-    if (!testFlowerInChunkUnconditional(&xrand, worldseed, { 191, 20 }, { 7, 8 }))
+    if (!testFlowerInChunkUnconditional(&xrand, sc, { 191, 20 }, { 7, 8 }))
         return;
 
-    // conditional filters
+    // speed test results for different filter orders
+    /*
+    1 2 3 -> 13 hours 58 minutes
+    1 3 2 -> 14 hours 3 minutes
+    2 1 3 -> 14 hours 7 minutes
+    2 3 1 -> 14 hours 5 minutes
+    3 1 2 -> 14 hours 13 minutes
+    3 2 1 -> 14 hours 4 minutes
+    */
 
     // if no flower patch in chunks (190,22), (191,21), (191,22) then 
     // in chunk (190, 21) there must be a flower patch (or unlikely single flower at 9, 9)
     const ChunkPos chunks1[] = QUAD_CHUNK(190, 21, 1, 1);
     const BlockPos2D flower1 = { 9, 9 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks1, flower1))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
         return;
-        
+
     // if no flower patch in chunks (190,19), (190,18), (191,18) then 
     // in chunk(191, 19) : flower patch (or unlikely single flower at 5, 4)
     const ChunkPos chunks2[] = QUAD_CHUNK(191, 19, -1, -1);
     const BlockPos2D flower2 = { 5, 4 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks2, flower2))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
         return;
 
-    // if no flower patch in chunks(188, 20), (188, 19), (189, 19) then
+    // if no flower patch in chunks(189, 21), (188, 21), (188, 20) then
     // in chunk(189, 20) : flower patch (or unlikely single flower at 0, 11)
-    const ChunkPos chunks3[] = QUAD_CHUNK(189, 20, -1, -1);
+    const ChunkPos chunks3[] = QUAD_CHUNK(189, 20, -1, 1);
     const BlockPos2D flower3 = { 0, 11 };
-    if (!testFlowerInChunkConditional(&xrand, worldseed, chunks3, flower3))
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks3, flower3))
         return;
 
     const int i = atomicAdd(&resultID1, 1);
@@ -230,7 +242,7 @@ __device__ void finalFilter(uint64_t worldseed)
 
             int matchedFlowers = matchFlowersForChunk(worldseed, cx, cz);
 
-			if (matchedFlowers < targetsInChunk)
+			if (matchedFlowers != targetsInChunk)
 				return; // not enough flowers in the chunk	
         }
     }
@@ -243,14 +255,14 @@ __device__ void finalFilter(uint64_t worldseed)
 
 // --------------------------------------------------------------------------------------------
 
-int setupConstantMemory()
+static int setupConstantMemory()
 {
     FILE* fptr = fopen("data/flowers.txt", "r");
     if (fptr == NULL)
         HOST_ERROR("couldn't open input file");
 
     BlockPos flowers[MAX_FLOWERS];
-    BlockPos airblocks[MAX_AIRBLOCKS];
+    //BlockPos airblocks[MAX_AIRBLOCKS];
     int flowerCount = 0, airblockCount = 0;
 
     BlockPos2D posMin = { INT_MAX, INT_MAX };
@@ -267,21 +279,21 @@ int setupConstantMemory()
 
     fclose(fptr);
 
-    fptr = fopen("data/airblocks.txt", "r");
-    if (fptr == NULL)
-        HOST_ERROR("couldn't open input file");
-
-    while (airblockCount < MAX_AIRBLOCKS && fscanf(fptr, "%d%d%d", &(airblocks[airblockCount].x), &(airblocks[airblockCount].y), &(airblocks[airblockCount].z)) == 3)
-        airblockCount++;
-
-    fclose(fptr);
+    //fptr = fopen("data/no_air.txt", "r");
+    //if (fptr == NULL)
+    //    HOST_ERROR("couldn't open input file");
+    //
+    //while (airblockCount < MAX_AIRBLOCKS && fscanf(fptr, "%d%d%d", &(airblocks[airblockCount].x), &(airblocks[airblockCount].y), &(airblocks[airblockCount].z)) == 3)
+    //    airblockCount++;
+    //
+    //fclose(fptr);
 
     DEBUG_PRINT("flowerCount: %d, airblockCount: %d\n", flowerCount, airblockCount);
 
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetFlowers, flowers, sizeof(BlockPos) * flowerCount));
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetFlowerCount, &flowerCount, sizeof(int)));
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblocks, airblocks, sizeof(BlockPos) * airblockCount));
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblockCount, &airblockCount, sizeof(int)));
+    //CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblocks, airblocks, sizeof(BlockPos) * airblockCount));
+    //CHECKED_OPERATION(cudaMemcpyToSymbol(targetAirblockCount, &airblockCount, sizeof(int)));
 
     // calculate the bounds for the region of relevant chunks
     ChunkPos regionMin_H = { (posMin.x - 7) >> 4, (posMin.z - 7) >> 4 };
@@ -330,14 +342,14 @@ __global__ void crackTextSeedPart1()
     initialFilter(worldseed);
 }
 
-int runCrackerTextSeeds()
+static int runCrackerTextSeeds()
 {
     CHECKED_OPERATION(cudaSetDevice(0));
 
-    auto start = std::chrono::high_resolution_clock::now();
-
     if (setupConstantMemory() != 0)
         return 1;
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     resultID1 = 0;
     resultID2 = 0;
@@ -381,43 +393,52 @@ int runCrackerTextSeeds()
 // ----------------------------------------------------------------
 
 constexpr uint64_t RANDOM_SEEDS_TOTAL = 1ULL << 48;
-constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 29;
-constexpr int RANDOM_SEEDS_PER_THREAD = 4;
-constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN * RANDOM_SEEDS_PER_THREAD;
+constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 31;
+//constexpr uint8_t BITS_PER_THREAD = 0;
+//constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
+constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
+constexpr int RUNS_PER_PRINT = 100;
 
 __global__ void crackRandomSeedPart1(const uint64_t offset)
 {
     // tid is the first state of java random used in the nextLong()
-    const uint64_t tid = (threadIdx.x + (uint64_t)blockDim.x * blockIdx.x + offset) << 2;
+    const uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x + offset;
     if (tid >= RANDOM_SEEDS_TOTAL) return;
 	
-    #pragma unroll
-    for (uint32_t low = 0; low < 4; low++)
-    {
-		const uint64_t firstState = tid | low;
-        const uint64_t secondState = (firstState * JRAND_MULTIPLIER + JRAND_ADDEND) & MASK48;
+    //#pragma unroll
+    //for (uint32_t low = 0; low < RANDOM_SEEDS_PER_THREAD; low++)
+    //{
+		//const uint64_t firstState = tid | low;
+        const uint64_t secondState = (tid * JRAND_MULTIPLIER + JRAND_ADDEND) & MASK48;
         const int toAdd = (int)(secondState >> 16);
-        const uint64_t worldseed = ((firstState >> 16) << 32) + toAdd;
+        const uint64_t worldseed = ((tid >> 16) << 32) + toAdd;
 
         initialFilter(worldseed);
-    }
+    //}
 }
 
-int runCrackerRandomSeeds()
+static int runCrackerRandomSeeds(int runStart, int runEnd)
 {
+    if (runStart < 0) runStart = 0;
+    if (runEnd > NUM_RUNS_RANDOM_SEEDS) runEnd = NUM_RUNS_RANDOM_SEEDS;
+
     CHECKED_OPERATION(cudaSetDevice(0));
 
     if (setupConstantMemory() != 0)
         return 1;
 
-    auto start = std::chrono::high_resolution_clock::now();
+    auto startGlobal = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
-    for (int run = 0; run < NUM_RUNS_RANDOM_SEEDS; run++)
+    for (int run = runStart; run < runEnd; run++)
     {
-		if (run % 100 == 0)
-			printf("Run %d / %d\n", run + 1, NUM_RUNS_RANDOM_SEEDS);
-
+        if (run % RUNS_PER_PRINT == 0)
+        {
+            start = std::chrono::steady_clock::now();
+            printf(" --- Run %d / %d\n", run + 1, NUM_RUNS_RANDOM_SEEDS);
+        }
+			
         resultID1 = 0;
         resultID2 = 0;
         resultID3 = 0;
@@ -451,32 +472,47 @@ int runCrackerRandomSeeds()
             printSignedSeed(results3[i]);
         }
 
-        if (run % 100 == 99)
+        if (run % RUNS_PER_PRINT == RUNS_PER_PRINT - 1)
         {
-            auto end = std::chrono::high_resolution_clock::now();
+            auto end = std::chrono::steady_clock::now();
             auto elapsed = end - start;
-			double ms = (double)elapsed.count() / 1000000.0 / 100.0; // 100 runs
-            //printf("\n       --- Run %d / %d took %lf ms    ", run, NUM_RUNS_RANDOM_SEEDS, ms);
+			double ms = (double)elapsed.count() / 1000000.0 / (double)RUNS_PER_PRINT;
 
             // calc eta based on this run
-            double eta_s = ms * (NUM_RUNS_RANDOM_SEEDS - run - 1) / 1000.0;
+            double eta_s = ms * (runEnd - run) / 1000.0;
             int sec = (int)floor(eta_s) % 60;
             double eta_min = eta_s / 60.0;
             int min = (int)floor(eta_min) % 60;
             double eta_h = eta_min / 60.0;
             int hrs = (int)floor(eta_h);
-            printf("ETA: %d HRS %d MIN %d SEC\n", hrs, min, sec);
+            fprintf(stderr, "ETA: %d HRS %d MIN %d SEC\n", hrs, min, sec);
         }
     }
 
     CHECKED_OPERATION(cudaDeviceReset());
+
+    auto endGlobal = std::chrono::steady_clock::now();
+    auto elapsedGlobal = endGlobal - startGlobal;
+    double seconds = (double)elapsedGlobal.count() / 1000000.0 / 1000.0;
+    printf("Runs took %lf seconds\n", seconds);
+
+    double minutesFull = seconds / 60.0 * NUM_RUNS_RANDOM_SEEDS / (runEnd - runStart);
+    int min = (int)floor(minutesFull) % 60;
+    int hrs = (int)floor(minutesFull / 60.0);
+    printf("Estimated runtime for full seedspace: %d hours %d minutes\n", hrs, min);
 
     return 0;
 }
 
 // ------------------------------------------------------
 
-int main()
+int main(int argc, char** argv)
 {
-	return runCrackerRandomSeeds();
+    if (argc <= 2)
+        HOST_ERROR("usage: ./executable rangeStartInclusive rangeEndExclusive [otherArgs]");
+
+    int rangeStart = atoi(argv[1]);
+    int rangeEnd = atoi(argv[2]);
+
+	return runCrackerRandomSeeds(rangeStart, rangeEnd);
 }
