@@ -428,12 +428,12 @@ __global__ void crackRandomSeedPart1(const uint64_t offset)
     //}
 }
 
-static int runCrackerRandomSeeds(int runStart, int runEnd)
+static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
 {
     if (runStart < 0) runStart = 0;
     if (runEnd > NUM_RUNS_RANDOM_SEEDS) runEnd = NUM_RUNS_RANDOM_SEEDS;
 
-    CHECKED_OPERATION(cudaSetDevice(0));
+    CHECKED_OPERATION(cudaSetDevice(devID));
 
     if (setupConstantMemory() != 0)
         return 1;
@@ -545,5 +545,12 @@ int main(int argc, char** argv)
     int rangeStart = atoi(argv[1]);
     int rangeEnd = atoi(argv[2]);
 
-	return runCrackerRandomSeeds(rangeStart, rangeEnd);
+    int devID = 0;
+    for (int i = 0; i < argc; i++)
+    {
+        if (argv[i][0] == 'd' && i != argc - 1)
+            devID = atoi(argv[i+1]);
+    }
+
+	return runCrackerRandomSeeds(rangeStart, rangeEnd, devID);
 }
