@@ -84,12 +84,12 @@
     <ClInclude Include="testing.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="main.cu" />
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="results.txt" />
     <Text Include="resultsRun2.txt" />
     <Text Include="resultsText.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="randomSeedTest.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
