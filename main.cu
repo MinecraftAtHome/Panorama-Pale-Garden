@@ -80,7 +80,10 @@ __device__ inline void initialFilter(const uint64_t worldseed)
 
     const int i = atomicAdd(&resultID1, 1);
     if (i >= MAX_RESULTS_1)
+    {
         printf("DEVICE ERROR: too many results from initial filter!\n");
+        return;
+    }
 
     results1[i] = worldseed;
 }
@@ -141,8 +144,11 @@ __device__ void secondaryFilter(const uint64_t worldseed)
     if (usedFlowers == fullMask)
     {
 		const int i = atomicAdd(&resultID2, 1);
-		if (i >= MAX_RESULTS_2)
-			printf("DEVICE ERROR: too many results from secondary filter!\n");
+        if (i >= MAX_RESULTS_2)
+        {
+            printf("DEVICE ERROR: too many results from secondary filter!\n");
+            return;
+        }
 
 		results2[i] = worldseed;
     }
@@ -249,7 +255,11 @@ __device__ void finalFilter(uint64_t worldseed)
 
 	const int i = atomicAdd(&resultID3, 1);
 	if (i >= MAX_RESULTS_3)
+	{
 		printf("DEVICE ERROR: too many results from final filter!\n");
+		return;
+	}
+
 	results3[i] = worldseed;
 }
 
