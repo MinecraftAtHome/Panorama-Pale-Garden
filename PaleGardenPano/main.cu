@@ -242,7 +242,7 @@ __device__ void finalFilter(uint64_t worldseed)
 
             int matchedFlowers = matchFlowersForChunk(worldseed, cx, cz);
 
-			if (matchedFlowers != targetsInChunk)
+            if (matchedFlowers < targetsInChunk)
 				return; // not enough flowers in the chunk	
         }
     }
