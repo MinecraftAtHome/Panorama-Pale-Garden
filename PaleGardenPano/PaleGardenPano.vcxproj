@@ -78,12 +78,12 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="cudawrapper.cuh" />
-    <ClInclude Include="flowergen.cuh" />
-    <ClInclude Include="jrand.cuh" />
+    <ClInclude Include="cudawrapper.h" />
+    <ClInclude Include="flowergen.h" />
+    <ClInclude Include="jrand.h" />
     <ClInclude Include="mccore.h" />
     <ClInclude Include="testing.h" />
-    <ClInclude Include="treegen.cuh" />
+    <ClInclude Include="treegen.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt" />

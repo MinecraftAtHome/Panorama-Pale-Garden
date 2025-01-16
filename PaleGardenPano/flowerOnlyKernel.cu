@@ -1,5 +1,5 @@
-﻿#include "flowergen.cuh"
-#include "cudawrapper.cuh"
+﻿#include "flowergen.h"
+#include "cudawrapper.h"
 #include <cstdio>
 #include <chrono>
 #include <cmath>

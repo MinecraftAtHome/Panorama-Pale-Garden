@@ -1,23 +1,56 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="cudawrapper.cuh" />
-    <ClInclude Include="flowergen.cuh" />
-    <ClInclude Include="jrand.cuh" />
-    <ClInclude Include="testing.h" />
-    <ClInclude Include="treegen.cuh" />
-    <ClInclude Include="mccore.h" />
+    <ClInclude Include="flowergen.h">
+      <Filter>worldgen</Filter>
+    </ClInclude>
+    <ClInclude Include="jrand.h">
+      <Filter>worldgen</Filter>
+    </ClInclude>
+    <ClInclude Include="treegen.h">
+      <Filter>worldgen</Filter>
+    </ClInclude>
+    <ClInclude Include="mccore.h">
+      <Filter>worldgen</Filter>
+    </ClInclude>
+    <ClInclude Include="cudawrapper.h">
+      <Filter>kernels</Filter>
+    </ClInclude>
+    <ClInclude Include="testing.h">
+      <Filter>kernels</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="results.txt" />
-    <Text Include="resultsText.txt" />
-    <Text Include="resultsRun2.txt" />
+    <Text Include="resultsText.txt">
+      <Filter>results</Filter>
+    </Text>
+    <Text Include="results.txt">
+      <Filter>results</Filter>
+    </Text>
+    <Text Include="resultsRun2.txt">
+      <Filter>results</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="flowerOnlyKernel.cu" />
-    <CudaCompile Include="treeKernel.cu" />
+    <CudaCompile Include="flowerOnlyKernel.cu">
+      <Filter>kernels</Filter>
+    </CudaCompile>
+    <CudaCompile Include="treeKernel.cu">
+      <Filter>kernels</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="worldgen">
+      <UniqueIdentifier>{245cd9c5-3348-40ef-a1f5-6bd1fba6ba47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="kernels">
+      <UniqueIdentifier>{6d60bc27-3293-43d0-902f-1d355d72178a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="results">
+      <UniqueIdentifier>{63a4bf29-7030-4c4a-878b-b5c754f10f84}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

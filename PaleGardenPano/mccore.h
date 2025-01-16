@@ -1,6 +1,8 @@
 #ifndef MCCORE_H_
 #define MCCORE_H_
 
+#include <cinttypes>
+
 typedef struct Pos2 ChunkPos;
 typedef struct Pos2 BlockPos2D;
 struct Pos2 {

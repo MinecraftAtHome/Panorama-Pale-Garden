@@ -1,6 +1,6 @@
 #pragma once
 
-#include "jrand.cuh"
+#include "jrand.h"
 #include "mccore.h"
 #include <cinttypes>
 
