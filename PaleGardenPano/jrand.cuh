@@ -1,4 +1,5 @@
-#pragma once
+#ifndef JRAND_H_
+#define JRAND_H_
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
@@ -275,3 +276,5 @@ __host__ __device__ inline uint64_t xGetPopulationSeed(uint64_t worldSeed, int b
     uint64_t populationSeed = (uint64_t)blockX * l + (uint64_t)blockZ * m ^ worldSeed;
     return populationSeed;
 }
+
+#endif // JRAND_H_

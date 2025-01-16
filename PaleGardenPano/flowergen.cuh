@@ -1,31 +1,11 @@
 #pragma once
 
 #include "jrand.cuh"
+#include "mccore.h"
 #include <cinttypes>
 
 constexpr int FLOWER_PATCH_SALT = 90003;
 constexpr int SINGLE_FLOWER_SALT = 90004;
-
-typedef struct Pos2 ChunkPos;
-typedef struct Pos2 BlockPos2D;
-struct Pos2 {
-    int x;
-    int z;
-};
-
-typedef struct Pos3 BlockPos;
-struct Pos3 {
-    int x;
-    int y;
-    int z;
-};
-
-typedef struct SeedConstants SeedConstants;
-struct SeedConstants {
-    uint64_t worldseed;
-    uint64_t A; // gets multiplied by chunk x in population seeding
-    uint64_t B; // gets multiplied by chunk z in population seeding
-};
 
 // --------------------------------------
 // helper functions

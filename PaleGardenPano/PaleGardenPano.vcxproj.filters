@@ -5,6 +5,8 @@
     <ClInclude Include="flowergen.cuh" />
     <ClInclude Include="jrand.cuh" />
     <ClInclude Include="testing.h" />
+    <ClInclude Include="treegen.cuh" />
+    <ClInclude Include="mccore.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt" />
@@ -12,6 +14,10 @@
     <Text Include="resultsRun2.txt" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="main.cu" />
+    <CudaCompile Include="flowerOnlyKernel.cu" />
+    <CudaCompile Include="treeKernel.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
 </Project>

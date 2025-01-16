@@ -81,7 +81,9 @@
     <ClInclude Include="cudawrapper.cuh" />
     <ClInclude Include="flowergen.cuh" />
     <ClInclude Include="jrand.cuh" />
+    <ClInclude Include="mccore.h" />
     <ClInclude Include="testing.h" />
+    <ClInclude Include="treegen.cuh" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="results.txt" />
@@ -89,7 +91,11 @@
     <Text Include="resultsText.txt" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="main.cu" />
+    <CudaCompile Include="flowerOnlyKernel.cu" />
+    <CudaCompile Include="treeKernel.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
