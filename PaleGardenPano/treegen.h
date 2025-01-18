@@ -1,8 +1,8 @@
 #ifndef TREEGEN_H_
 #define TREEGEN_H_
 
-#include "jrand.h"
 #include "mccore.h"
+
 
 typedef struct PaleOakTrunk PaleOakTrunk;
 struct PaleOakTrunk {

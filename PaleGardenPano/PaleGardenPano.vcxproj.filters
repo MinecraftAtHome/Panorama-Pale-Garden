@@ -4,13 +4,10 @@
     <ClInclude Include="flowergen.h">
       <Filter>worldgen</Filter>
     </ClInclude>
-    <ClInclude Include="jrand.h">
+    <ClInclude Include="mccore.h">
       <Filter>worldgen</Filter>
     </ClInclude>
     <ClInclude Include="treegen.h">
-      <Filter>worldgen</Filter>
-    </ClInclude>
-    <ClInclude Include="mccore.h">
       <Filter>worldgen</Filter>
     </ClInclude>
     <ClInclude Include="cudawrapper.h">

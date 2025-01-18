@@ -1,6 +1,5 @@
 #pragma once
 
-#include "jrand.h"
 #include "mccore.h"
 #include <cinttypes>
 
@@ -10,18 +9,6 @@ constexpr int SINGLE_FLOWER_SALT = 90004;
 // --------------------------------------
 // helper functions
 // --------------------------------------
-
-__device__ inline uint64_t getPopulationSeedFast(const SeedConstants& sc, const int chunkX, const int chunkZ)
-{
-    const uint64_t popseed = sc.A * chunkX + sc.B * chunkZ ^ sc.worldseed;
-    return popseed;
-}
-
-__device__ inline uint64_t getPopulationSeedFast(const SeedConstants& sc, const ChunkPos& chunkPos)
-{
-    const uint64_t popseed = sc.A * chunkPos.x + sc.B * chunkPos.z ^ sc.worldseed;
-    return popseed;
-}
 
 __device__ inline bool getFlowerGenOrigin(uint64_t populationSeed, const ChunkPos& chunkPos, BlockPos2D *resultPtr)
 {

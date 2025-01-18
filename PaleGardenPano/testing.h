@@ -1,5 +1,5 @@
 #pragma once
-#include "jrand.h"
+#include "mccore.h"
 
 #define TEST_FILE_AIRBLOCKS "data/no_air.txt"
 

@@ -80,7 +80,6 @@
   <ItemGroup>
     <ClInclude Include="cudawrapper.h" />
     <ClInclude Include="flowergen.h" />
-    <ClInclude Include="jrand.h" />
     <ClInclude Include="mccore.h" />
     <ClInclude Include="testing.h" />
     <ClInclude Include="treegen.h" />
