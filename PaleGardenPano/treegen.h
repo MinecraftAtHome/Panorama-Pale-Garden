@@ -6,8 +6,9 @@
 
 typedef struct PaleOakTrunk PaleOakTrunk;
 struct PaleOakTrunk {
+	BlockPos generationSource;
 	int branches[4][4];		// contains branch y-positions relative to the tree's generation source
-	int extraBranchCount;	// how many extra branches are visible in the panorama
+	int branchCount;	// how many extra branches are visible in the panorama
 	/*
 	[] = possible branch,
 	## = standard tree trunk,
@@ -21,17 +22,17 @@ struct PaleOakTrunk {
 	*/
 };
 
-__device__ inline bool testTreePos(Xoroshiro* xrand, const BlockPos2D& posInChunk)
+__device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTrunk& target)
 {
 	// assume that the generator is seeded to generate the next 
 	// tree-like feature in some chunk.
 
 	const int treeX = xNextIntJPO2(xrand, 16);
-	if (posInChunk.x != treeX) 
+	if (target.generationSource.x != treeX) 
 		return false;
 
 	const int treeZ = xNextIntJPO2(xrand, 16);
-	return posInChunk.z == treeZ;
+	return target.generationSource.z == treeZ;
 }
 
 
@@ -82,7 +83,30 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTrunk& tar
     }
 
 	// if all branches matched, we're good
-	return matchedBranches == target.extraBranchCount;
+	return matchedBranches == target.branchCount;
+}
+
+
+__host__ inline void initTreeData(PaleOakTrunk* treeData, const BlockPos& generationSource)
+{
+	treeData->branchCount = 0;
+	treeData->generationSource = generationSource;
+
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++)
+			treeData->branches[i][j] = -1;
+}
+
+__host__ inline void addBranch(PaleOakTrunk* treeData, int x, int y, int z)
+{
+	// branch position relative to the tree's generation source
+	x -= treeData->generationSource.x;
+	y -= treeData->generationSource.y;
+	z -= treeData->generationSource.z;
+
+	// offset the (x,z) by (1,1) to fit the array indices
+	treeData->branches[x + 1][z + 1] = y;
+	treeData->branchCount++;
 }
 
 #endif // TREEGEN_H_
