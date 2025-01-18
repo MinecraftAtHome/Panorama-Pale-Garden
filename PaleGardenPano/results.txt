@@ -216,3 +216,7 @@ Runs took 9505.418954 seconds in total:
 Estimated runtime for full seedspace: 16 hours 25 minutes
 
 
+
+Kernel took 8.914500 ms
+
+Kernel took 99610.590900 ms

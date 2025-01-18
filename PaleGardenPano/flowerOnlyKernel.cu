@@ -556,3 +556,8 @@ int runFlowerKernel(int argc, char** argv)
 
     return runCrackerRandomSeeds(rangeStart, rangeEnd, devID);
 }
+
+int runFlowerKernelTextSeeds()
+{
+	return runCrackerTextSeeds();
+}

@@ -3,9 +3,10 @@
 
 #include "mccore.h"
 
+constexpr int PALE_OAK_SALT = 90001;
 
-typedef struct PaleOakTrunk PaleOakTrunk;
-struct PaleOakTrunk {
+typedef struct PaleOakTree PaleOakTree;
+struct PaleOakTree {
 	BlockPos generationSource;
 	int branches[4][4];		// contains branch y-positions relative to the tree's generation source
 	int branchCount;	// how many extra branches are visible in the panorama
@@ -22,7 +23,7 @@ struct PaleOakTrunk {
 	*/
 };
 
-__device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTrunk& target)
+__device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTree& target)
 {
 	// assume that the generator is seeded to generate the next 
 	// tree-like feature in some chunk.
@@ -35,8 +36,7 @@ __device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTrunk& target)
 	return target.generationSource.z == treeZ;
 }
 
-
-__device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTrunk& target)
+__device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& target)
 {
 	// we already got a good pale oak tree position here, 
 	// test if the extra branches are all a match
@@ -86,8 +86,11 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTrunk& tar
 	return matchedBranches == target.branchCount;
 }
 
+// --------------------------------------
+// host-side data initialization utils
+// --------------------------------------
 
-__host__ inline void initTreeData(PaleOakTrunk* treeData, const BlockPos& generationSource)
+__host__ inline void initTreeData(PaleOakTree* treeData, const BlockPos& generationSource)
 {
 	treeData->branchCount = 0;
 	treeData->generationSource = generationSource;
@@ -97,16 +100,45 @@ __host__ inline void initTreeData(PaleOakTrunk* treeData, const BlockPos& genera
 			treeData->branches[i][j] = -1;
 }
 
-__host__ inline void addBranch(PaleOakTrunk* treeData, int x, int y, int z)
+__host__ inline void addBranch(PaleOakTree* treeData, BlockPos branch)
 {
 	// branch position relative to the tree's generation source
-	x -= treeData->generationSource.x;
-	y -= treeData->generationSource.y;
-	z -= treeData->generationSource.z;
+	branch.x -= treeData->generationSource.x;
+	branch.y -= treeData->generationSource.y;
+	branch.z -= treeData->generationSource.z;
 
 	// offset the (x,z) by (1,1) to fit the array indices
-	treeData->branches[x + 1][z + 1] = y;
+	treeData->branches[branch.x + 1][branch.z + 1] = branch.y;
 	treeData->branchCount++;
+}
+
+// --------------------------------------
+// complete device-side filter
+// --------------------------------------
+
+__device__ inline bool canTreeGenerate(const SeedConstants& sc, const PaleOakTree& target)
+{
+	Xoroshiro xrand = { 0ULL, 0ULL }, xrandStep = { 0ULL, 0ULL };
+	const ChunkPos chunkPos = { target.generationSource.x >> 4, target.generationSource.z >> 4 };
+	const uint64_t populationSeed = getPopulationSeedFast(sc, chunkPos);
+
+	xSetSeed(&xrandStep, populationSeed + PALE_OAK_SALT);
+
+	// we can expect each pale oak to make around 300-350 random calls.
+	// if 8 pale oaks get generated in a chunk, that's 2400-2800 calls.
+	// 3000 calls should be enough to avoid false negatives.
+	for (int i = 0; i < 3000; i++)
+	{
+		xrand.lo = xrandStep.lo;
+		xrand.hi = xrandStep.hi;
+		if (testTreePos(&xrand, target))
+			if (testPaleOakTree(&xrand, target))
+				return true;
+
+		xNextLong(&xrandStep);
+	}
+	
+	return false;
 }
 
 #endif // TREEGEN_H_
