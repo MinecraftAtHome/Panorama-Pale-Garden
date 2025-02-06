@@ -2,6 +2,7 @@
 #define TREEGEN_H_
 
 #include "mccore.h"
+#include "cudawrapper.h"
 
 constexpr int PALE_OAK_SALT = 90001;
 
@@ -23,21 +24,40 @@ struct PaleOakTree {
 	*/
 };
 
+__host__ __device__ inline void printTreeData(const PaleOakTree& treeData)
+{
+	DEBUG_PRINT("TreeData:\n\tgenerationSource=(%d,%d,%d)\n",
+		treeData.generationSource.x, treeData.generationSource.y, treeData.generationSource.z);
+
+	DEBUG_PRINT("\t%d branches:\n\t\t", treeData.branchCount);
+	for (int z = 0; z < 4; z++)
+	{
+		for (int x = 0; x < 4; x++)
+			DEBUG_PRINT("%d ", treeData.branches[x][z]);
+		DEBUG_PRINT("\n\t\t");
+	}
+
+	DEBUG_PRINT("\n");
+}
+
+
 __device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTree& target)
 {
 	// assume that the generator is seeded to generate the next 
 	// tree-like feature in some chunk.
 
 	const int treeX = xNextIntJPO2(xrand, 16);
-	if (target.generationSource.x != treeX) 
+	if ((target.generationSource.x & 15) != treeX) 
 		return false;
 
 	const int treeZ = xNextIntJPO2(xrand, 16);
-	return target.generationSource.z == treeZ;
+	return (target.generationSource.z & 15) == treeZ;
 }
 
 __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& target)
 {
+	DEBUG_PRINT("testPaleOakTree()\n");
+
 	// we already got a good pale oak tree position here, 
 	// test if the extra branches are all a match
 
@@ -69,9 +89,13 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& targ
 				if (branchRequirement < 0)
 					continue; // don't know if a branch should be here, skip
 
-				const int lowestExtraBranchBlock = maxY - extraBranchSize - 2;
+				const int lowestExtraBranchBlock = maxY - extraBranchSize;
 				if (lowestExtraBranchBlock != branchRequirement)
+				{
+					DEBUG_PRINT("Branch mismatch: expected %d, got %d\n", branchRequirement, lowestExtraBranchBlock);
+					DEBUG_PRINT("at deltaX = %d, deltaZ = %d\n", deltaX, deltaZ);
 					return false; // had branch data and it didn't match, fail
+				}
 
 				matchedBranches++;
 
@@ -81,6 +105,8 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& targ
             }
         }
     }
+
+	DEBUG_PRINT("Matched %d branches out of %d required\n", matchedBranches, target.branchCount);
 
 	// if all branches matched, we're good
 	return matchedBranches == target.branchCount;
@@ -118,6 +144,13 @@ __host__ inline void addBranch(PaleOakTree* treeData, BlockPos branch)
 
 __device__ inline bool canTreeGenerate(const SeedConstants& sc, const PaleOakTree& target)
 {
+	// DEBUG-ONLY
+	if (sc.worldseed != 44441ULL)
+		return false;
+
+	DEBUG_PRINT("canTreeGenerate() called for target\n");
+	printTreeData(target);
+
 	Xoroshiro xrand = { 0ULL, 0ULL }, xrandStep = { 0ULL, 0ULL };
 	const ChunkPos chunkPos = { target.generationSource.x >> 4, target.generationSource.z >> 4 };
 	const uint64_t populationSeed = getPopulationSeedFast(sc, chunkPos);

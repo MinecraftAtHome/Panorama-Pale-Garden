@@ -6,6 +6,7 @@
 #include <cmath>
 
 #define STATS
+#define TREE_FILE "data/tests-trees/t1.txt"
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
@@ -51,9 +52,24 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
         return;
 
 	// check tree generation (very, very slow filter)
-	for (int i = 0; i < targetTreeCount; i++)
+    for (int i = 0; i < targetTreeCount; i++)
+    {
+        // DEBUG-ONLY
+        if (sc.worldseed == 44441ULL)
+        {
+            printf("Checking %d ...\n", i);
+        }
+
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
+
+        // DEBUG-ONLY
+		if (sc.worldseed == 44441ULL)
+		{
+			printf("Tree %d can generate!\n\n", i);
+		}
+    }
+        
 
     const int i = atomicAdd(&resultID1, 1);
     if (i >= MAX_RESULTS_1)
@@ -72,7 +88,7 @@ static int setupConstantMemory()
     PaleOakTree trees_H[MAX_PALE_OAKS];
 	int treeCount = 0;
 
-    FILE* fptr = fopen("data/pale_oak_trees.txt", "r");
+    FILE* fptr = fopen(TREE_FILE, "r");
     if (fptr == NULL)
         HOST_ERROR("couldn't open input file");
 
@@ -94,8 +110,6 @@ static int setupConstantMemory()
     }
     fclose(fptr);
 
-    DEBUG_PRINT("treeCount: %d\n", treeCount);
-
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
 
@@ -104,7 +118,7 @@ static int setupConstantMemory()
 
 // ----------------------------------------------------------------
 
-constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 32; // IMPORTANT TODO change to 32!!!!!!!
+constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 16; // TODO REPLACE WITH 1<<32
 
 __global__ void crackTextSeedTrees()
 {
