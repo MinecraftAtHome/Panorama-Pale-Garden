@@ -53,8 +53,8 @@ __device__ inline bool testFlowers(const SeedConstants& sc)
 
 __device__ inline bool testMushroom(const SeedConstants& sc)
 {
-    // TODO add the mushroom filter
-    return true;
+    const BlockPos2D mushroomStem = { 3049, 382 };
+    return canMushroomGenerate(sc, mushroomStem);
 }
 
 __device__ inline void randomBullshitFilter(const uint64_t worldseed)
@@ -79,20 +79,20 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
 	// check tree generation (very, very slow filter)
     for (int i = 0; i < targetTreeCount; i++)
     {
-        // DEBUG-ONLY
-        if (sc.worldseed == 44441ULL)
-        {
-            printf("Checking %d ...\n", i);
-        }
+        //// DEBUG-ONLY
+        //if (sc.worldseed == 44441ULL)
+        //{
+        //    printf("Checking %d ...\n", i);
+        //}
 
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
 
-        // DEBUG-ONLY
-		if (sc.worldseed == 44441ULL)
-		{
-			printf("Tree %d can generate!\n\n", i);
-		}
+        //// DEBUG-ONLY
+		//if (sc.worldseed == 44441ULL)
+		//{
+		//	printf("Tree %d can generate!\n\n", i);
+		//}
     }
         
 

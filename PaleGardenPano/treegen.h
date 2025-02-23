@@ -5,12 +5,14 @@
 #include "cudawrapper.h"
 
 constexpr int PALE_OAK_SALT = 90001;
+constexpr int DARK_TREES_SALT = 90001;
 
 typedef struct PaleOakTree PaleOakTree;
 struct PaleOakTree {
 	BlockPos generationSource;
 	int branches[4][4];		// contains branch y-positions relative to the tree's generation source
 	int branchCount;	// how many extra branches are visible in the panorama
+	int height;			// height of the tree trunk (will always be certain, otherwise branch data is invalid)
 	/*
 	[] = possible branch,
 	## = standard tree trunk,
@@ -112,11 +114,27 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& targ
 	return matchedBranches == target.branchCount;
 }
 
+__device__ inline bool testDarkForestMushroomTree(Xoroshiro* xrand, const BlockPos2D& treePos)
+{
+	// test inSquarePlacement
+	const int mushX = xNextIntJPO2(xrand, 16);
+	const int mushZ = xNextIntJPO2(xrand, 16);
+	if (mushX != (treePos.x & 15) || mushZ != (treePos.z & 15))
+		return false;
+
+	// random selector for tree type, need specific sequence of calls
+	if (!(xNextFloat(xrand) < 0.025F))
+		if (!(xNextFloat(xrand) < 0.05F))
+			return false; // didn't get brown mushroom or red mushroom tree
+
+	return true;
+}
+
 // --------------------------------------
 // host-side data initialization utils
 // --------------------------------------
 
-__host__ inline void initTreeData(PaleOakTree* treeData, const BlockPos& generationSource)
+__host__ inline void initTreeData(PaleOakTree* treeData, const BlockPos& generationSource, const int height)
 {
 	treeData->branchCount = 0;
 	treeData->generationSource = generationSource;
@@ -144,12 +162,12 @@ __host__ inline void addBranch(PaleOakTree* treeData, BlockPos branch)
 
 __device__ inline bool canTreeGenerate(const SeedConstants& sc, const PaleOakTree& target)
 {
-	// DEBUG-ONLY
-	if (sc.worldseed != 44441ULL)
-		return false;
+	//// DEBUG-ONLY
+	//if (sc.worldseed != 44441ULL)
+	//	return false;
 
 	DEBUG_PRINT("canTreeGenerate() called for target\n");
-	printTreeData(target);
+	//printTreeData(target);
 
 	Xoroshiro xrand = { 0ULL, 0ULL }, xrandStep = { 0ULL, 0ULL };
 	const ChunkPos chunkPos = { target.generationSource.x >> 4, target.generationSource.z >> 4 };
@@ -172,6 +190,25 @@ __device__ inline bool canTreeGenerate(const SeedConstants& sc, const PaleOakTre
 	}
 	
 	return false;
+}
+
+__device__ inline bool canMushroomGenerate(const SeedConstants& sc, const BlockPos2D& mushPos)
+{
+	Xoroshiro xrand = { 0ULL, 0ULL }, xrandStep = { 0ULL, 0ULL };
+	const ChunkPos chunkPos = { mushPos.x >> 4, mushPos.z >> 4 };
+	const uint64_t populationSeed = getPopulationSeedFast(sc, chunkPos);
+
+	xSetSeed(&xrandStep, populationSeed + DARK_TREES_SALT);
+
+	for (int i = 0; i < 500; i++)
+	{
+		xrand.lo = xrandStep.lo;
+		xrand.hi = xrandStep.hi;
+		if (testDarkForestMushroomTree(&xrand, mushPos))
+			return true;
+
+		xNextLong(&xrandStep);
+	}
 }
 
 #endif // TREEGEN_H_
