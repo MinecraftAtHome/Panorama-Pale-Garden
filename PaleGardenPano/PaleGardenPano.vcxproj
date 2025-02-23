@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="flowerOnlyKernel.cu" />
+    <CudaCompile Include="testTreeKernel.cu" />
     <CudaCompile Include="treeKernel.cu" />
   </ItemGroup>
   <ItemGroup>
