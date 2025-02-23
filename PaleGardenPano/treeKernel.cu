@@ -6,7 +6,8 @@
 #include <cmath>
 
 #define STATS
-#define TREE_FILE "data/tests-trees/t1.txt"
+#define TREE_FILE "data/pale_oak_trees.txt"
+//#define TREE_FILE "data/tests-trees/t1.txt"
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
@@ -69,12 +70,12 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // check flower generation (decently fast filter)
-	if (!testFlowers(sc))
-		return;
+	//if (!testFlowers(sc))
+	//	return;
 
     // check mushroom generation (slow filter)
-    if (!testMushroom(sc))
-        return;
+    //if (!testMushroom(sc))
+    //    return;
 
 	// check tree generation (very, very slow filter)
     for (int i = 0; i < targetTreeCount; i++)
@@ -117,11 +118,12 @@ static int setupConstantMemory()
     if (fptr == NULL)
         HOST_ERROR("couldn't open input file");
 
+    int treeHeight;
     BlockPos genSource, branch;
-    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z)) == 3)
+    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z), &treeHeight) == 4)
     {
         PaleOakTree* treePtr = &(trees_H[treeCount]);
-		initTreeData(treePtr, genSource);
+		initTreeData(treePtr, genSource, treeHeight);
         treeCount++;
 
         // read branch data
@@ -135,6 +137,8 @@ static int setupConstantMemory()
     }
     fclose(fptr);
 
+    printf("Read %d trees from file\n", treeCount);
+
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
 
@@ -143,7 +147,7 @@ static int setupConstantMemory()
 
 // ----------------------------------------------------------------
 
-constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 16; // TODO REPLACE WITH 1<<32
+constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 32;
 
 __global__ void crackTextSeedTrees()
 {
@@ -169,7 +173,7 @@ static int runCrackerTextSeeds()
 
     resultID1 = 0;
 
-    const int THREADS_PER_BLOCK = 512;
+    const int THREADS_PER_BLOCK = 256;
     const int NUM_BLOCKS_1 = (TEXT_SEEDS_TOTAL + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
     crackTextSeedTrees <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >>> ();
     CHECKED_OPERATION(cudaGetLastError());

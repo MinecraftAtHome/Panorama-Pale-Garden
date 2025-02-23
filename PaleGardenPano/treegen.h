@@ -69,6 +69,9 @@ __device__ inline bool testPaleOakTree(Xoroshiro* xrand, const PaleOakTree& targ
     int treeHeight = 6 + xNextIntJ(xrand, 3);   // baseHeight + heightRandA
 	treeHeight += xNextIntJ(xrand, 2);          // + heightRandB
 
+	if (treeHeight != target.height) // not an amazing filter but still something
+		return false;
+
 	xNextLong(xrand);		// rand.nextInt(4) for bend direction
 	xNextLong(xrand);		// rand.nextInt(4) for bend starting height
 	xNextIntJ(xrand, 3);	// rand.nextInt(3) for bend size
@@ -138,6 +141,7 @@ __host__ inline void initTreeData(PaleOakTree* treeData, const BlockPos& generat
 {
 	treeData->branchCount = 0;
 	treeData->generationSource = generationSource;
+	treeData->height = height;
 
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
