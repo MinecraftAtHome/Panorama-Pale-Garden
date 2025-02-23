@@ -22,8 +22,33 @@ __managed__ int resultID1;
 
 __device__ inline bool testFlowers(const SeedConstants& sc)
 {
-    // TODO add all the flower stuff here
-    return true;
+	Xoroshiro xrand = { 0ULL, 0ULL };
+
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+    const BlockPos2D flower1 = { 5, 4 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+        return false;
+    
+	// i feel like this has to be natural too, just a hunch though
+    const ChunkPos chunks2[] = QUAD_CHUNK(190, 22, 1, -1);
+    const BlockPos2D flower2 = { 10, 2 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
+        return false;
+
+    // for these two we'll just say that it's likely that at least one is correct
+    bool anyGood = false;
+
+    const ChunkPos chunks3[] = QUAD_CHUNK(191, 21, 1, -1);
+    const BlockPos2D flower3 = { 11, 5 };
+    anyGood = testFlowerInChunkConditional(&xrand, sc, chunks3, flower3);
+
+    const ChunkPos chunks4[] = QUAD_CHUNK(189, 20, -1, 1);
+    const BlockPos2D flower4 = { 0, 11 };
+	if (!anyGood)
+        anyGood = testFlowerInChunkConditional(&xrand, sc, chunks4, flower4);
+
+    return anyGood;
 }
 
 __device__ inline bool testMushroom(const SeedConstants& sc)
