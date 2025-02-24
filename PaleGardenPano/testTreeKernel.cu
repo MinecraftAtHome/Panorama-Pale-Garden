@@ -5,12 +5,10 @@
 #include <chrono>
 #include <cmath>
 
-// CLEARED
+// test units
 //#define TREE_FILE "data/tests-trees/t2.txt"
-//#define TREE_FILE "data/tests-trees/t3.txt"
-
-// TODO
-#define TREE_FILE "data/tests-trees/t4.txt"
+#define TREE_FILE "data/tests-trees/t3.txt"
+//#define TREE_FILE "data/tests-trees/t4.txt"
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
@@ -49,27 +47,27 @@ __device__ static inline bool testFlowers(const SeedConstants& sc)
     //}
 
     // test 3
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(181, -112, 1, 1);
-    //    const BlockPos2D flower = { 13, 9 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(180, -114, -1, -1);
-    //    const BlockPos2D flower = { 4, 5 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(171, -119, 1, -1);
-    //    const BlockPos2D flower = { 11, 0 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
+    {
+        const ChunkPos chunks[] = QUAD_CHUNK(181, -112, 1, 1);
+        const BlockPos2D flower = { 13, 9 };
+        if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+            return false;
+    }
+    {
+        const ChunkPos chunks[] = QUAD_CHUNK(180, -114, -1, -1);
+        const BlockPos2D flower = { 4, 5 };
+        if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+            return false;
+    }
+    {
+        const ChunkPos chunks[] = QUAD_CHUNK(171, -119, 1, -1);
+        const BlockPos2D flower = { 11, 0 };
+        if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+            return false;
+    }
 
 	// test 4
-	{
+	/*{
 		const ChunkPos chunks[] = QUAD_CHUNK(-149, -160, -1, -1);
 		const BlockPos2D flower = { 3, 2 };
 		if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
@@ -86,7 +84,7 @@ __device__ static inline bool testFlowers(const SeedConstants& sc)
         const BlockPos2D flower = { 14, 12 };
         if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
             return false;
-    }
+    }*/
     
     return true;
 }
@@ -96,20 +94,20 @@ __device__ static inline bool testMushroom(const SeedConstants& sc)
     // missing test 2 mushrooms but dont care
 
     // test3
-    //return 
-    //    canMushroomGenerate(sc, { 2695, -1925 })
-    //    && canMushroomGenerate(sc, { 2700, -1927 })
-    //    && canMushroomGenerate(sc, { 2700, -1932 })
-    //    && canMushroomGenerate(sc, { 2709, -1949 })
-    //    && canMushroomGenerate(sc, { 2696, -1969 })
-    //    && canMushroomGenerate(sc, { 2718, -1974 })
-    //;
-
-    return
-		canMushroomGenerate(sc, { -2344, -2511 })
-		&& canMushroomGenerate(sc, { -2385, -2506 })
-		&& canMushroomGenerate(sc, { -2400, -2456 })
+    return 
+        canMushroomGenerate(sc, { 2695, -1925 })
+        && canMushroomGenerate(sc, { 2700, -1927 })
+        && canMushroomGenerate(sc, { 2700, -1932 })
+        && canMushroomGenerate(sc, { 2709, -1949 })
+        && canMushroomGenerate(sc, { 2696, -1969 })
+        && canMushroomGenerate(sc, { 2718, -1974 })
     ;
+
+  //  return
+		//canMushroomGenerate(sc, { -2344, -2511 })
+		//&& canMushroomGenerate(sc, { -2385, -2506 })
+		//&& canMushroomGenerate(sc, { -2400, -2456 })
+  //  ;
 }
 
 __device__ static inline void randomBullshitFilter(const uint64_t worldseed)

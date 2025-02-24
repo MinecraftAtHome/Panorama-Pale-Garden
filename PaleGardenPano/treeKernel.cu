@@ -13,9 +13,11 @@
 constexpr int MAX_PALE_OAKS = 32;
 __constant__ PaleOakTree targetTrees[MAX_PALE_OAKS];
 __constant__ int targetTreeCount;
+__constant__ PaleOakTree targetOredTrees[MAX_PALE_OAKS];
+__constant__ int targetOredTreeCount;
 
 // for initial filter
-constexpr int MAX_RESULTS_1 = 1024 * 1024;
+constexpr int MAX_RESULTS_1 = 1024;
 __managed__ uint64_t results1[MAX_RESULTS_1];
 __managed__ int resultID1;
 
@@ -70,30 +72,27 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // check flower generation (decently fast filter)
-	//if (!testFlowers(sc))
-	//	return;
+	if (!testFlowers(sc))
+		return;
 
     // check mushroom generation (slow filter)
-    //if (!testMushroom(sc))
-    //    return;
+    if (!testMushroom(sc))
+        return;
 
 	// check tree generation (very, very slow filter)
     for (int i = 0; i < targetTreeCount; i++)
     {
-        //// DEBUG-ONLY
-        //if (sc.worldseed == 44441ULL)
-        //{
-        //    printf("Checking %d ...\n", i);
-        //}
-
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
+    }
 
-        //// DEBUG-ONLY
-		//if (sc.worldseed == 44441ULL)
-		//{
-		//	printf("Tree %d can generate!\n\n", i);
-		//}
+	// check or-ed tree generation (very, very slow filter)
+	// for now we're hardcoding groups of 2
+    for (int i = 0; i < targetOredTreeCount; i += 2)
+    {
+		const bool canAnyGen = canTreeGenerate(sc, targetOredTrees[i]) || canTreeGenerate(sc, targetOredTrees[i + 1]);
+		if (!canAnyGen)
+			return;
     }
         
 
@@ -112,7 +111,8 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
 static int setupConstantMemory()
 {
     PaleOakTree trees_H[MAX_PALE_OAKS];
-	int treeCount = 0;
+	PaleOakTree oredTrees_H[MAX_PALE_OAKS];
+    int treeCount = 0, oredTreeCount = 0;
 
     FILE* fptr = fopen(TREE_FILE, "r");
     if (fptr == NULL)
@@ -120,27 +120,43 @@ static int setupConstantMemory()
 
     int treeHeight;
     BlockPos genSource, branch;
-    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z), &treeHeight) == 4)
-    {
-        PaleOakTree* treePtr = &(trees_H[treeCount]);
-		initTreeData(treePtr, genSource, treeHeight);
-        treeCount++;
+    int treesInGroup = 1;
 
-        // read branch data
-        int branches = 0;
-        (void)fscanf(fptr, "%d", &branches);
-		for (int i = 0; i < branches; i++)
-		{
-			(void)fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z));
-			addBranch(treePtr, branch);
-		}
+    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d", &treesInGroup) > 0)
+    {
+		//printf("trees in group: %d\n", treesInGroup);
+		int* countptr = treesInGroup > 1 ? &oredTreeCount : &treeCount;
+		
+        for (int i = 0; i < treesInGroup; i++)
+        {
+            //printf("reading tree\n");
+            PaleOakTree* treePtr = treesInGroup > 1 ? &(oredTrees_H[*countptr]) : &(trees_H[*countptr]);
+            (*countptr)++;
+
+            int branches = 0;
+            if (fscanf(fptr, "%d%d%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z), &treeHeight, &branches) != 5)
+                HOST_ERROR("incorrect input data format");
+
+			//printf("data: %d %d %d %d\n", genSource.x, genSource.y, genSource.z, treeHeight);
+            initTreeData(treePtr, genSource, treeHeight);
+
+            // read branch data
+            for (int i = 0; i < branches; i++)
+            {
+                (void)fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z));
+                addBranch(treePtr, branch);
+            }
+        }
+        
     }
     fclose(fptr);
 
-    printf("Read %d trees from file\n", treeCount);
+    //printf("Read %d trees, %d or-ed trees from file\n", treeCount, oredTreeCount);
 
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
+	CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTrees, oredTrees_H, sizeof(PaleOakTree) * oredTreeCount));
+    CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTreeCount, &oredTreeCount, sizeof(int)));
 
     return 0;
 }
@@ -310,13 +326,13 @@ static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
 int runTreeKernel(int argc, char** argv)
 {
     if (argc <= 2)
-        HOST_ERROR("usage: ./executable rangeStartInclusive rangeEndExclusive [otherArgs]");
+        HOST_ERROR("usage: ./executable rangeStartInclusive rangeEndExclusive [d deviceID]");
 
     int rangeStart = atoi(argv[1]);
     int rangeEnd = atoi(argv[2]);
 
     int devID = 0;
-    for (int i = 0; i < argc; i++)
+    for (int i = 3; i < argc; i++)
     {
         if (argv[i][0] == 'd' && i != argc - 1)
             devID = atoi(argv[i + 1]);

@@ -213,6 +213,8 @@ __device__ inline bool canMushroomGenerate(const SeedConstants& sc, const BlockP
 
 		xNextLong(&xrandStep);
 	}
+
+	return false;
 }
 
 #endif // TREEGEN_H_
