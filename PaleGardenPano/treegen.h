@@ -5,7 +5,7 @@
 #include "cudawrapper.h"
 
 constexpr int PALE_OAK_SALT = 90001;
-constexpr int DARK_TREES_SALT = 90001;
+constexpr int DARK_TREES_SALT = 90017; // should be 90001 according to feature data json file in source code
 
 typedef struct PaleOakTree PaleOakTree;
 struct PaleOakTree {
@@ -126,11 +126,12 @@ __device__ inline bool testDarkForestMushroomTree(Xoroshiro* xrand, const BlockP
 		return false;
 
 	// random selector for tree type, need specific sequence of calls
-	if (!(xNextFloat(xrand) < 0.025F))
-		if (!(xNextFloat(xrand) < 0.05F))
-			return false; // didn't get brown mushroom or red mushroom tree
+	if (xNextFloat(xrand) < 0.025F)
+		return true; // rolled brown mushroom tree
+	if (xNextFloat(xrand) < 0.05F)
+		return true; // rolled red mushroom tree
 
-	return true;
+	return false;
 }
 
 // --------------------------------------
