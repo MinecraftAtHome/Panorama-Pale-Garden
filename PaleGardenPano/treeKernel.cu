@@ -7,7 +7,6 @@
 
 #define STATS
 #define TREE_FILE "data/pale_oak_trees.txt"
-//#define TREE_FILE "data/tests-trees/t1.txt"
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
@@ -21,11 +20,23 @@ constexpr int MAX_RESULTS_1 = 1024;
 __managed__ uint64_t results1[MAX_RESULTS_1];
 __managed__ int resultID1;
 
+// flower cluster positions, hardcoded because i'm lazy
+constexpr int CLUSTER_THRESHOLD = 2;
+constexpr int FLOWER_CLUSTER_COUNT = 5;
+__constant__ BlockPos2D flowerClusters[FLOWER_CLUSTER_COUNT] = {
+	{ 3051, 331 },
+	{ 3062, 328 },
+	{ 3067, 341 },
+	{ 3050, 355 },
+    { 3037, 330 }
+};
+
 // --------------------------------------------------------------------------------------------
 
+// 3s per 2^32
 __device__ inline bool testFlowers(const SeedConstants& sc)
 {
-	Xoroshiro xrand = { 0ULL, 0ULL };
+    Xoroshiro xrand = { 0ULL, 0ULL };
 
     // the most likely naturally generated flower
     const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
@@ -54,6 +65,45 @@ __device__ inline bool testFlowers(const SeedConstants& sc)
     return anyGood;
 }
 
+// 13s per 2^32
+__device__ inline bool testFlowers2 /*ElectricBoogaloo*/ (const SeedConstants& sc)
+{
+    Xoroshiro xrand = { 0ULL, 0ULL };
+
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+    const BlockPos2D flower1 = { 5, 4 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+        return false;
+
+    int matchedClusters = 0;
+    #pragma unroll
+	for (int i = 0; i < FLOWER_CLUSTER_COUNT; i++)
+	{
+		const BlockPos2D clusterPos = flowerClusters[i];
+        const BlockPos2D flower = { clusterPos.x & 15, clusterPos.z & 15 };
+		const BlockPos2D dir = { (flower.x < 8 ? -1 : 1), (flower.z < 8 ? -1 : 1) };
+		const ChunkPos clusterChunk = { clusterPos.x >> 4, clusterPos.z >> 4 };
+		const ChunkPos chunks[] = QUAD_CHUNK(clusterChunk.x, clusterChunk.z, dir.x, dir.z);
+
+		if (testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+			matchedClusters++;
+	}
+
+	return matchedClusters >= CLUSTER_THRESHOLD;
+}
+
+// 51s per 2^32
+__device__ inline bool testFlowers3(const SeedConstants& sc)
+{
+    Xoroshiro xrand = { 0ULL, 0ULL };
+
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+    const BlockPos2D flower1 = { 5, 4 };
+    return testFlowerInChunkConditional(&xrand, sc, chunks1, flower1);
+}
+
 __device__ inline bool testMushroom(const SeedConstants& sc)
 {
     const BlockPos2D mushroomStem = { 3049, 382 };
@@ -72,7 +122,7 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // check flower generation (decently fast filter)
-	if (!testFlowers(sc))
+	if (!testFlowers3(sc))
 		return;
 
     // check mushroom generation (slow filter)
