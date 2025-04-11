@@ -5,113 +5,119 @@
 #include <chrono>
 #include <cmath>
 
-// test units
-//#define TREE_FILE "data/tests-trees/t2.txt"
-//#define TREE_FILE "data/tests-trees/t3.txt"
-#define TREE_FILE "data/tests-trees/t4.txt"
+// crucial data
+#define TREE_FILE "data/pale_oak_trees.txt"
+#define FLOWER_POS { 5, 4 }
+#define FLOWER_CHUNKS QUAD_CHUNK(191, 19, -1, -1)
+#define MUSHROOM_POS { 3049, 382 }
+
+// ---------------------------------------------------------------------------------------------
+
+#define STATS
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
 __constant__ PaleOakTree targetTrees[MAX_PALE_OAKS];
 __constant__ int targetTreeCount;
+__constant__ PaleOakTree targetOredTrees[MAX_PALE_OAKS];
+__constant__ int targetOredTreeCount;
 
 // for initial filter
-constexpr int MAX_RESULTS_1 = 1024 * 1024;
+constexpr int MAX_RESULTS_1 = 1024;
 __managed__ uint64_t results1[MAX_RESULTS_1];
 __managed__ int resultID1;
 
+// flower cluster positions, hardcoded because i'm lazy
+constexpr int CLUSTER_THRESHOLD = 2;
+constexpr int FLOWER_CLUSTER_COUNT = 5;
+__constant__ BlockPos2D flowerClusters[FLOWER_CLUSTER_COUNT] = {
+    { 3051, 331 },
+    { 3062, 328 },
+    { 3067, 341 },
+    { 3050, 355 },
+    { 3037, 330 }
+};
+
 // --------------------------------------------------------------------------------------------
 
-__device__ static inline bool testFlowers(const SeedConstants& sc)
+// 3s per 2^32
+__device__ inline bool testFlowers(const SeedConstants& sc)
 {
     Xoroshiro xrand = { 0ULL, 0ULL };
 
-    // test 2
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(-50, 88, -1, -1);
-    //    const BlockPos2D flower = { 3, 0 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(-52, 90, 1, 1);
-    //    const BlockPos2D flower = { 15, 10 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(-46, 90, 1, -1);
-    //    const BlockPos2D flower = { 10, 2 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+    const BlockPos2D flower1 = { 5, 4 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+        return false;
 
-    // test 3
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(181, -112, 1, 1);
-    //    const BlockPos2D flower = { 13, 9 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(180, -114, -1, -1);
-    //    const BlockPos2D flower = { 4, 5 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
-    //{
-    //    const ChunkPos chunks[] = QUAD_CHUNK(171, -119, 1, -1);
-    //    const BlockPos2D flower = { 11, 0 };
-    //    if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-    //        return false;
-    //}
+    // i feel like this has to be natural too, just a hunch though
+    const ChunkPos chunks2[] = QUAD_CHUNK(190, 22, 1, -1);
+    const BlockPos2D flower2 = { 10, 2 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
+        return false;
 
-	// test 4
-	{
-		const ChunkPos chunks[] = QUAD_CHUNK(-149, -160, -1, -1);
-		const BlockPos2D flower = { 3, 2 };
-		if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-			return false;
-	}
-    {
-        const ChunkPos chunks[] = QUAD_CHUNK(-149, -161, 1, 1);
-        const BlockPos2D flower = { 15, 15 };
-        if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-            return false;
-    }
-    {
-        const ChunkPos chunks[] = QUAD_CHUNK(-149, -161, 1, 1);
-        const BlockPos2D flower = { 14, 12 };
-        if (!testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-            return false;
-    }
-    
-    return true;
+    // for these two we'll just say that it's likely that at least one is correct
+    bool anyGood = false;
+
+    const ChunkPos chunks3[] = QUAD_CHUNK(191, 21, 1, -1);
+    const BlockPos2D flower3 = { 11, 5 };
+    anyGood = testFlowerInChunkConditional(&xrand, sc, chunks3, flower3);
+
+    const ChunkPos chunks4[] = QUAD_CHUNK(189, 20, -1, 1);
+    const BlockPos2D flower4 = { 0, 11 };
+    if (!anyGood)
+        anyGood = testFlowerInChunkConditional(&xrand, sc, chunks4, flower4);
+
+    return anyGood;
 }
 
-__device__ static inline bool testMushroom(const SeedConstants& sc)
+// 13s per 2^32
+__device__ inline bool testFlowers2 /*ElectricBoogaloo*/(const SeedConstants& sc)
 {
-    // no mushrooms for test 2
-    // return true;
+    Xoroshiro xrand = { 0ULL, 0ULL };
 
-    // test3
-    //return 
-    //    canMushroomGenerate(sc, { 2695, -1925 })
-    //    && canMushroomGenerate(sc, { 2700, -1927 })
-    //    && canMushroomGenerate(sc, { 2700, -1932 })
-    //    && canMushroomGenerate(sc, { 2709, -1949 })
-    //    && canMushroomGenerate(sc, { 2696, -1969 })
-    //    && canMushroomGenerate(sc, { 2718, -1974 })
-    //;
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+    const BlockPos2D flower1 = { 5, 4 };
+    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+        return false;
 
-    return
-		canMushroomGenerate(sc, { -2344, -2511 })
-		&& canMushroomGenerate(sc, { -2385, -2506 })
-		&& canMushroomGenerate(sc, { -2400, -2456 })
-    ;
+    int matchedClusters = 0;
+#pragma unroll
+    for (int i = 0; i < FLOWER_CLUSTER_COUNT; i++)
+    {
+        const BlockPos2D clusterPos = flowerClusters[i];
+        const BlockPos2D flower = { clusterPos.x & 15, clusterPos.z & 15 };
+        const BlockPos2D dir = { (flower.x < 8 ? -1 : 1), (flower.z < 8 ? -1 : 1) };
+        const ChunkPos clusterChunk = { clusterPos.x >> 4, clusterPos.z >> 4 };
+        const ChunkPos chunks[] = QUAD_CHUNK(clusterChunk.x, clusterChunk.z, dir.x, dir.z);
+
+        if (testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+            matchedClusters++;
+    }
+
+    return matchedClusters >= CLUSTER_THRESHOLD;
 }
 
-__device__ static inline void randomBullshitFilter(const uint64_t worldseed)
+// 51s per 2^32
+__device__ inline bool testFlowers3(const SeedConstants& sc)
+{
+    Xoroshiro xrand = { 0ULL, 0ULL };
+
+    // the most likely naturally generated flower
+    const ChunkPos chunks1[] = FLOWER_CHUNKS;
+    const BlockPos2D flower1 = FLOWER_POS;
+    return testFlowerInChunkConditional(&xrand, sc, chunks1, flower1);
+}
+
+__device__ inline bool testMushroom(const SeedConstants& sc)
+{
+    const BlockPos2D mushroomStem = MUSHROOM_POS;
+    return canMushroomGenerate(sc, mushroomStem);
+}
+
+__device__ inline void randomBullshitFilter(const uint64_t worldseed)
 {
     // filters seeds based on obstructed flowers, then mushroom, then pale oaks
 
@@ -123,8 +129,8 @@ __device__ static inline void randomBullshitFilter(const uint64_t worldseed)
     sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // check flower generation (decently fast filter)
-    if (!testFlowers(sc))
-    	return;
+    if (!testFlowers3(sc))
+        return;
 
     // check mushroom generation (slow filter)
     if (!testMushroom(sc))
@@ -134,6 +140,15 @@ __device__ static inline void randomBullshitFilter(const uint64_t worldseed)
     for (int i = 0; i < targetTreeCount; i++)
     {
         if (!canTreeGenerate(sc, targetTrees[i]))
+            return;
+    }
+
+    // check or-ed tree generation (very, very slow filter)
+    // for now we're hardcoding groups of 2
+    for (int i = 0; i < targetOredTreeCount; i += 2)
+    {
+        const bool canAnyGen = canTreeGenerate(sc, targetOredTrees[i]) || canTreeGenerate(sc, targetOredTrees[i + 1]);
+        if (!canAnyGen)
             return;
     }
 
@@ -153,7 +168,8 @@ __device__ static inline void randomBullshitFilter(const uint64_t worldseed)
 static int setupConstantMemory()
 {
     PaleOakTree trees_H[MAX_PALE_OAKS];
-    int treeCount = 0;
+    PaleOakTree oredTrees_H[MAX_PALE_OAKS];
+    int treeCount = 0, oredTreeCount = 0;
 
     FILE* fptr = fopen(TREE_FILE, "r");
     if (fptr == NULL)
@@ -161,27 +177,43 @@ static int setupConstantMemory()
 
     int treeHeight;
     BlockPos genSource, branch;
-    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z), &treeHeight) == 4)
-    {
-        PaleOakTree* treePtr = &(trees_H[treeCount]);
-        initTreeData(treePtr, genSource, treeHeight);
-        treeCount++;
+    int treesInGroup = 1;
 
-        // read branch data
-        int branches = 0;
-        (void)fscanf(fptr, "%d", &branches);
-        for (int i = 0; i < branches; i++)
+    while (treeCount < MAX_PALE_OAKS && fscanf(fptr, "%d", &treesInGroup) > 0)
+    {
+        //printf("trees in group: %d\n", treesInGroup);
+        int* countptr = treesInGroup > 1 ? &oredTreeCount : &treeCount;
+
+        for (int i = 0; i < treesInGroup; i++)
         {
-            (void)fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z));
-            addBranch(treePtr, branch);
+            //printf("reading tree\n");
+            PaleOakTree* treePtr = treesInGroup > 1 ? &(oredTrees_H[*countptr]) : &(trees_H[*countptr]);
+            (*countptr)++;
+
+            int branches = 0;
+            if (fscanf(fptr, "%d%d%d%d%d", &(genSource.x), &(genSource.y), &(genSource.z), &treeHeight, &branches) != 5)
+                HOST_ERROR("incorrect input data format");
+
+            //printf("data: %d %d %d %d\n", genSource.x, genSource.y, genSource.z, treeHeight);
+            initTreeData(treePtr, genSource, treeHeight);
+
+            // read branch data
+            for (int i = 0; i < branches; i++)
+            {
+                (void)fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z));
+                addBranch(treePtr, branch);
+            }
         }
+
     }
     fclose(fptr);
 
-    printf("Read %d trees from file\n", treeCount);
+    //printf("Read %d trees, %d or-ed trees from file\n", treeCount, oredTreeCount);
 
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
     CHECKED_OPERATION(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
+    CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTrees, oredTrees_H, sizeof(PaleOakTree) * oredTreeCount));
+    CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTreeCount, &oredTreeCount, sizeof(int)));
 
     return 0;
 }
@@ -190,7 +222,7 @@ static int setupConstantMemory()
 
 constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 32;
 
-__global__ static void crackTextSeedTreesTest()
+__global__ void crackTextSeedTrees()
 {
     uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x;
     if (tid >= TEXT_SEEDS_TOTAL) return;
@@ -203,7 +235,7 @@ __global__ static void crackTextSeedTreesTest()
     randomBullshitFilter(worldseed);
 }
 
-static int testCrackerTextSeeds()
+static int runCrackerTextSeeds()
 {
     CHECKED_OPERATION(cudaSetDevice(0));
 
@@ -216,7 +248,7 @@ static int testCrackerTextSeeds()
 
     const int THREADS_PER_BLOCK = 256;
     const int NUM_BLOCKS_1 = (TEXT_SEEDS_TOTAL + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    crackTextSeedTreesTest << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > ();
+    crackTextSeedTrees << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > ();
     CHECKED_OPERATION(cudaGetLastError());
     CHECKED_OPERATION(cudaDeviceSynchronize());
 
@@ -235,9 +267,138 @@ static int testCrackerTextSeeds()
     return 0;
 }
 
+// ----------------------------------------------------------------
+
+constexpr uint64_t RANDOM_SEEDS_TOTAL = 1ULL << 48;
+constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 31;
+//constexpr uint8_t BITS_PER_THREAD = 0;
+//constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
+constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
+constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
+constexpr int RUNS_PER_PRINT = 100;
+
+__global__ void crackRandomSeedTrees(const uint64_t offset)
+{
+    // tid is the first state of java random used in the nextLong()
+    const uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x + offset;
+    if (tid >= RANDOM_SEEDS_TOTAL) return;
+
+    //#pragma unroll
+    //for (uint32_t low = 0; low < RANDOM_SEEDS_PER_THREAD; low++)
+    //{
+        //const uint64_t firstState = tid | low;
+    const uint64_t secondState = (tid * JRAND_MULTIPLIER + JRAND_ADDEND) & MASK48;
+    const int toAdd = (int)(secondState >> 16);
+    const uint64_t worldseed = ((tid >> 16) << 32) + toAdd;
+
+    randomBullshitFilter(worldseed);
+    //}
+}
+
+static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
+{
+    if (runStart < 0) runStart = 0;
+    if (runEnd > NUM_RUNS_RANDOM_SEEDS) runEnd = NUM_RUNS_RANDOM_SEEDS;
+
+    CHECKED_OPERATION(cudaSetDevice(devID));
+
+    if (setupConstantMemory() != 0)
+        return 1;
+
+#ifdef STATS
+    auto startGlobal = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
+    //double ms1 = 0.0, ms2 = 0.0, ms3 = 0.0;
+#endif
+
+    for (int run = runStart; run < runEnd; run++)
+    {
+#ifdef STATS
+        if (run % RUNS_PER_PRINT == 0)
+        {
+            start = std::chrono::steady_clock::now();
+            printf(" --- Run %d / %d\n", run + 1, NUM_RUNS_RANDOM_SEEDS);
+        }
+#endif
+
+        resultID1 = 0;
+
+        const int THREADS_PER_BLOCK = 512;
+        const int NUM_BLOCKS_1 = (THREADS_LAUNCHED_PER_RUN + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+        //auto s1 = std::chrono::steady_clock::now();
+        crackRandomSeedTrees << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > (run * THREADS_LAUNCHED_PER_RUN);
+        CHECKED_OPERATION(cudaGetLastError());
+        CHECKED_OPERATION(cudaDeviceSynchronize());
+        //auto e1 = std::chrono::steady_clock::now();
+        //ms1 += (e1 - s1).count() / 1000000.0;
+
+        for (int i = 0; i < resultID1; i++)
+        {
+            printSignedSeed(results1[i]);
+        }
+
+#ifdef STATS
+        if (run % RUNS_PER_PRINT == RUNS_PER_PRINT - 1)
+        {
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed = end - start;
+            double ms = (double)elapsed.count() / 1000000.0 / (double)RUNS_PER_PRINT;
+
+            // calc eta based on this run
+            double eta_s = ms * (runEnd - run) / 1000.0;
+            int sec = (int)floor(eta_s) % 60;
+            double eta_min = eta_s / 60.0;
+            int min = (int)floor(eta_min) % 60;
+            double eta_h = eta_min / 60.0;
+            int hrs = (int)floor(eta_h);
+            fprintf(stderr, "ETA: %d HRS %d MIN %d SEC\n", hrs, min, sec);
+        }
+#endif
+    }
+
+    CHECKED_OPERATION(cudaDeviceReset());
+
+#ifdef STATS
+    auto endGlobal = std::chrono::steady_clock::now();
+    auto elapsedGlobal = endGlobal - startGlobal;
+    double seconds = (double)elapsedGlobal.count() / 1000000.0 / 1000.0;
+    printf("Runs took %lf seconds in total:\n", seconds);
+
+    //printf("Filter 1: %lf sec\n", ms1 / 1000.0);
+    //printf("Filter 2: %lf sec\n", ms2 / 1000.0);
+    //printf("Filter 3: %lf sec\n", ms3 / 1000.0);
+
+    double minutesFull = seconds / 60.0 * NUM_RUNS_RANDOM_SEEDS / (runEnd - runStart);
+    int min = (int)floor(minutesFull) % 60;
+    int hrs = (int)floor(minutesFull / 60.0);
+    printf("\nEstimated runtime for full seedspace: %d hours %d minutes\n", hrs, min);
+#endif
+
+    return 0;
+}
+
 // ------------------------------------------------------
 
-int testTreeKernelTextSeeds()
+int runTreeKernel(int argc, char** argv)
 {
-    return testCrackerTextSeeds();
+    if (argc <= 2)
+        HOST_ERROR("usage: ./executable rangeStartInclusive rangeEndExclusive [d deviceID]");
+
+    int rangeStart = atoi(argv[1]);
+    int rangeEnd = atoi(argv[2]);
+
+    int devID = 0;
+    for (int i = 3; i < argc; i++)
+    {
+        if (argv[i][0] == 'd' && i != argc - 1)
+            devID = atoi(argv[i + 1]);
+    }
+
+    return runCrackerRandomSeeds(rangeStart, rangeEnd, devID);
+}
+
+int runTreeKernelTextSeeds()
+{
+    return runCrackerTextSeeds();
 }

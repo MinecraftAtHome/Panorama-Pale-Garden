@@ -4,16 +4,9 @@ extern int runFlowerKernelTextSeeds();
 extern int runTreeKernel(int argc, char** argv);
 extern int runTreeKernelTextSeeds();
 
-// testing
-extern int testTreeKernelTextSeeds();
-
 int main(int argc, char** argv) {
-	// runFlowerKernel(argc, argv);
-	// runTreeKernel(argc, argv);
-
-	runTreeKernelTextSeeds();
-
-	//testTreeKernelTextSeeds();
+	// runTreeKernelTextSeeds();
+	runTreeKernel(argc, argv);
 
 	return 0;
 }
