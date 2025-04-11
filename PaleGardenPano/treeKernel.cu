@@ -13,7 +13,7 @@
 
 // ---------------------------------------------------------------------------------------------
 
-#define STATS
+//#define STATS
 
 // filter data
 constexpr int MAX_PALE_OAKS = 32;
@@ -257,10 +257,12 @@ static int runCrackerTextSeeds()
         printSignedSeed(results1[i]);
     }
 
+#ifdef STATS
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = end - start;
     double ms = (double)elapsed.count() / 1000000.0;
     printf("\nKernel took %lf ms\n", ms);
+#endif
 
     CHECKED_OPERATION(cudaDeviceReset());
 

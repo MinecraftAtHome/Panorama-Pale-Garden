@@ -5,11 +5,18 @@
 #include <chrono>
 #include <cmath>
 
-// crucial data
-#define TREE_FILE "data/pale_oak_trees.txt"
-#define FLOWER_POS { 5, 4 }
-#define FLOWER_CHUNKS QUAD_CHUNK(191, 19, -1, -1)
-#define MUSHROOM_POS { 3049, 382 }
+// test data
+//constexpr uint64_t SEED = (0ULL - 5942542354745112913ULL);
+//#define TREE_FILE "data/rstest-trees/t1.txt"
+//#define FLOWER_POS { -1154 & 15, 327 & 15 }
+//#define FLOWER_CHUNKS QUAD_CHUNK(-73, 20, 1, -1)
+//#define MUSHROOM_POS { -1102, 315 }
+
+constexpr uint64_t SEED = 2661364578184010961ULL;
+#define TREE_FILE "data/rstest-trees/t2.txt"
+#define FLOWER_POS { -376 & 15, 299 & 15 }
+#define FLOWER_CHUNKS QUAD_CHUNK(-24, 18, -1, 1)
+#define MUSHROOM_POS { -417, 359 }
 
 // ---------------------------------------------------------------------------------------------
 
@@ -119,6 +126,7 @@ __device__ inline bool testMushroom(const SeedConstants& sc)
 
 __device__ inline void randomBullshitFilter(const uint64_t worldseed)
 {
+    printf("Got correct worldseed\n");
     // filters seeds based on obstructed flowers, then mushroom, then pale oaks
 
     // calculate shared constants
@@ -132,15 +140,20 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     if (!testFlowers3(sc))
         return;
 
+    printf("Got flower\n");
+
     // check mushroom generation (slow filter)
     if (!testMushroom(sc))
         return;
+
+    printf("Got mushroom\n");
 
     // check tree generation (very, very slow filter)
     for (int i = 0; i < targetTreeCount; i++)
     {
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
+        printf("Got tree %d / %d\n", i, targetTreeCount);
     }
 
     // check or-ed tree generation (very, very slow filter)
@@ -150,6 +163,7 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
         const bool canAnyGen = canTreeGenerate(sc, targetOredTrees[i]) || canTreeGenerate(sc, targetOredTrees[i + 1]);
         if (!canAnyGen)
             return;
+        printf("Got ORed tree %d / %d\n", i, targetOredTreeCount);
     }
 
 
@@ -275,23 +289,24 @@ constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 31;
 //constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
-constexpr int RUNS_PER_PRINT = 100;
+constexpr int RUNS_PER_PRINT = 1000;
 
 __global__ void crackRandomSeedTrees(const uint64_t offset)
 {
     // tid is the first state of java random used in the nextLong()
     const uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x + offset;
     if (tid >= RANDOM_SEEDS_TOTAL) return;
-
+    
     //#pragma unroll
     //for (uint32_t low = 0; low < RANDOM_SEEDS_PER_THREAD; low++)
     //{
         //const uint64_t firstState = tid | low;
     const uint64_t secondState = (tid * JRAND_MULTIPLIER + JRAND_ADDEND) & MASK48;
-    const int toAdd = (int)(secondState >> 16);
+    const int32_t toAdd = (int32_t)(secondState >> 16);
     const uint64_t worldseed = ((tid >> 16) << 32) + toAdd;
 
-    randomBullshitFilter(worldseed);
+    if (worldseed == SEED) // TODO REMOVE
+        randomBullshitFilter(worldseed);
     //}
 }
 
@@ -311,7 +326,12 @@ static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
     //double ms1 = 0.0, ms2 = 0.0, ms3 = 0.0;
 #endif
 
-    for (int run = runStart; run < runEnd; run++)
+    //constexpr uint64_t target_iseed = 179174187255593ULL;
+    constexpr uint64_t target_iseed = 45034876826481ULL;
+    constexpr uint64_t target_first_state = (target_iseed * JRAND_MULTIPLIER + 11) & MASK48;
+	constexpr int target_run = target_first_state / THREADS_LAUNCHED_PER_RUN;
+
+    for (uint32_t run = target_run-10; run < target_run+10; run++)
     {
 #ifdef STATS
         if (run % RUNS_PER_PRINT == 0)
@@ -327,7 +347,7 @@ static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
         const int NUM_BLOCKS_1 = (THREADS_LAUNCHED_PER_RUN + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
         //auto s1 = std::chrono::steady_clock::now();
-        crackRandomSeedTrees << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > (run * THREADS_LAUNCHED_PER_RUN);
+        crackRandomSeedTrees <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >>> (run * THREADS_LAUNCHED_PER_RUN);
         CHECKED_OPERATION(cudaGetLastError());
         CHECKED_OPERATION(cudaDeviceSynchronize());
         //auto e1 = std::chrono::steady_clock::now();

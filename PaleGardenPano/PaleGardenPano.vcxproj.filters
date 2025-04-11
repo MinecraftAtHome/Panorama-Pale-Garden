@@ -32,7 +32,7 @@
     <CudaCompile Include="flowerOnlyKernel.cu">
       <Filter>kernels</Filter>
     </CudaCompile>
-    <CudaCompile Include="testTreeKernel.cu">
+    <CudaCompile Include="treeKernel.cu">
       <Filter>kernels</Filter>
     </CudaCompile>
   </ItemGroup>
