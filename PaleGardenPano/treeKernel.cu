@@ -310,6 +310,15 @@ constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 30;
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
 
+// for boinc checkpointing
+struct checkpoint_vars {
+    int32_t range_min;
+    int32_t range_max;
+    uint64_t elapsed_chkpoint;
+};
+int32_t global_range_min = 0;
+int32_t global_range_max = 0;
+
 
 __global__ void crackRandomSeedTrees(const uint64_t offset)
 {
@@ -323,8 +332,6 @@ __global__ void crackRandomSeedTrees(const uint64_t offset)
     randomBullshitFilter(worldseed);
 }
 
-int32_t global_range_min = 0;
-int32_t global_range_max = 0;
 static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time_elapsed, int32_t devID)
 {
     if (runStart < 0)
@@ -412,12 +419,6 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
 
 // ------------------------------------------------------
 
-struct checkpoint_vars {
-    int32_t range_min;
-	int32_t range_max;
-    uint64_t elapsed_chkpoint;
-};
-
 int runTreeKernel(int argc, char** argv)
 {
     int32_t range_min = 0;
@@ -494,7 +495,7 @@ int runTreeKernel(int argc, char** argv)
 		range_min = data_store.range_min;
 		range_max = data_store.range_max;
         time_elapsed = data_store.elapsed_chkpoint;
-        fprintf(stderr, "Checkpoint loaded, task time %d s, seed pos: %llu\n", elapsed_chkpoint, offsetStart);
+        fprintf(stderr, "Checkpoint loaded, task time %llu us, seed pos: %llu\n", time_elapsed, range_min);
         fclose(checkpoint_data);
         boinc_end_critical_section();
     }
