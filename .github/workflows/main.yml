@@ -42,7 +42,7 @@ jobs:
     - name: build
       run: |
         cd PaleGardenPano
-        nvcc -g -maxrregcount 128 --resource-usage -lineinfo -Xptxas -lineinfo -v -O3 -arch=all -m=64 main.cpp treeKernel.cu -o ${{ github.event.repository.name }}-cuda.exe -diag-suppress 177 -ID:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\boinc\ -ID:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\boinc\win\ -LD:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\boinc\lib\win\ -lboinc_api -lboinc -lcuda -luser32 -DBOINC -D_WIN32 -allow-unsupported-compiler
+        nvcc -g -maxrregcount 128 --resource-usage -lineinfo -Xptxas -lineinfo -v -O3 -arch=all -m=64 main.cpp treeKernel.cu -o ${{ github.event.repository.name }}-cuda.exe -diag-suppress 177 -ID:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\PaleGardenPano\boinc\ -ID:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\PaleGardenPano\boinc\win\ -LD:\a\${{ github.event.repository.name }}\${{ github.event.repository.name }}\PaleGardenPano\boinc\lib\win\ -lboinc_api -lboinc -lcuda -luser32 -DBOINC -D_WIN32 -allow-unsupported-compiler
         dir
     - uses: actions/upload-artifact@v4
       with:
