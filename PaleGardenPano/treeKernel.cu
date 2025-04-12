@@ -15,9 +15,9 @@ typedef std::chrono::steady_clock::time_point time_point;
 
 #ifdef BOINC
 constexpr int RUNS_PER_CHECKPOINT = 16;
-#include "boinc_api.h"
+#include "boinc/boinc_api.h"
 #if defined _WIN32 || defined _WIN64
-#include "boinc_win.h"
+#include "boinc/boinc_win.h"
 #endif
 #endif
 
