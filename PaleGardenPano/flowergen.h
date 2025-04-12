@@ -1,7 +1,6 @@
 #pragma once
 
 #include "mccore.h"
-#include <cinttypes>
 
 constexpr int FLOWER_PATCH_SALT = 90003;
 constexpr int SINGLE_FLOWER_SALT = 90004;
