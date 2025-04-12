@@ -6,7 +6,7 @@
 #include <cmath>
 
 // crucial data
-#define TREE_FILE "data/pale_oak_trees.txt"
+#define TREE_FILE "pale_oak_trees.txt"
 #define FLOWER_POS { 5, 4 }
 #define FLOWER_CHUNKS QUAD_CHUNK(191, 19, -1, -1)
 #define MUSHROOM_POS { 3049, 382 }
