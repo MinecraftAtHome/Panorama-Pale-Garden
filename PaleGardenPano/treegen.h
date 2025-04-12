@@ -25,22 +25,6 @@ struct PaleOakTree {
 	*/
 };
 
-__host__ __device__ inline void printTreeData(const PaleOakTree& treeData)
-{
-	fprintf(stderr, "TreeData:\n\tgenerationSource=(%d,%d,%d)\n",
-		treeData.generationSource.x, treeData.generationSource.y, treeData.generationSource.z);
-
-	fprintf(stderr, "\t%d branches:\n\t\t", treeData.branchCount);
-	for (int z = 0; z < 4; z++)
-	{
-		for (int x = 0; x < 4; x++)
-			fprintf(stderr, "%d ", treeData.branches[x][z]);
-		fprintf(stderr, "\n\t\t");
-	}
-
-	fprintf(stderr, "\n");
-}
-
 
 __device__ inline bool testTreePos(Xoroshiro* xrand, const PaleOakTree& target)
 {

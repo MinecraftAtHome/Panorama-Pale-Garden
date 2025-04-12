@@ -307,8 +307,6 @@ static int setupConstantMemory()
 
 constexpr uint64_t RANDOM_SEEDS_TOTAL = 1ULL << 48;
 constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 30;
-//constexpr uint8_t BITS_PER_THREAD = 0;
-//constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
 
@@ -325,6 +323,8 @@ __global__ void crackRandomSeedTrees(const uint64_t offset)
     randomBullshitFilter(worldseed);
 }
 
+int32_t global_range_min = 0;
+int32_t global_range_max = 0;
 static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time_elapsed, int32_t devID)
 {
     if (runStart < 0)
@@ -417,8 +417,6 @@ struct checkpoint_vars {
 	int32_t range_max;
     uint64_t elapsed_chkpoint;
 };
-int32_t global_range_min = 0;
-int32_t global_range_max = 0;
 
 int runTreeKernel(int argc, char** argv)
 {
@@ -508,4 +506,5 @@ int runTreeKernel(int argc, char** argv)
 int runTreeKernelTextSeeds()
 {
     //return runCrackerTextSeeds();
+    return 0;
 }
