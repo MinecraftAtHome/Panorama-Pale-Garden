@@ -3,9 +3,9 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include <cstdint>
-#include <cinttypes>
-#include <cstdio>
+#include <stdint.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 #define JRAND_MULTIPLIER (0x5deece66dULL)
 #define JRAND_ADDEND (11ULL)

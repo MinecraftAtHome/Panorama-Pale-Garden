@@ -1,9 +1,46 @@
-#include "flowergen.h"
 #include "treegen.h"
-#include "cudawrapper.h"
-#include <cstdio>
+#include "flowergen.h"
+
+
+#define __STDC_FORMAT_MACROS 1
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <inttypes.h>
+
 #include <chrono>
-#include <cmath>
+typedef std::chrono::steady_clock::time_point time_point;
+
+#ifdef BOINC
+#include "boinc_api.h"
+#if defined _WIN32 || defined _WIN64
+#include "boinc_win.h"
+#endif
+#endif
+
+#define GPU_ASSERT(code) gpuAssert((code), __FILE__, __LINE__)
+inline void gpuAssert(cudaError_t code, const char* file, int line) {
+    if (code != cudaSuccess) {
+        fprintf(stderr, "[ERROR] GPUassert: %s (code %d) %s %d\n", cudaGetErrorString(code), code, file, line);
+        exit(code);
+    }
+}
+
+#define HOST_ERROR(msg) hostError((msg), __FILE__, __LINE__)
+inline void hostError(const char* msg, const char* file, int line) {
+	fprintf(stderr, "[ERROR] %s, line %d: %s \n", file, line, msg);
+	exit(1);
+}
+
+#define HOST_LOG(...) \
+{ \
+	fprintf(stderr, "[LOG] %s, line %d: ", __FILE__, __LINE__); \
+	fprintf(stderr, __VA_ARGS__); \
+	fprintf(stderr, "\n"); \
+}
+
 
 // crucial data
 #define TREE_FILE "pale_oak_trees.txt"
@@ -41,64 +78,64 @@ __constant__ BlockPos2D flowerClusters[FLOWER_CLUSTER_COUNT] = {
 // --------------------------------------------------------------------------------------------
 
 // 3s per 2^32
-__device__ inline bool testFlowers(const SeedConstants& sc)
-{
-    Xoroshiro xrand = { 0ULL, 0ULL };
-
-    // the most likely naturally generated flower
-    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
-    const BlockPos2D flower1 = { 5, 4 };
-    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
-        return false;
-
-    // i feel like this has to be natural too, just a hunch though
-    const ChunkPos chunks2[] = QUAD_CHUNK(190, 22, 1, -1);
-    const BlockPos2D flower2 = { 10, 2 };
-    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
-        return false;
-
-    // for these two we'll just say that it's likely that at least one is correct
-    bool anyGood = false;
-
-    const ChunkPos chunks3[] = QUAD_CHUNK(191, 21, 1, -1);
-    const BlockPos2D flower3 = { 11, 5 };
-    anyGood = testFlowerInChunkConditional(&xrand, sc, chunks3, flower3);
-
-    const ChunkPos chunks4[] = QUAD_CHUNK(189, 20, -1, 1);
-    const BlockPos2D flower4 = { 0, 11 };
-    if (!anyGood)
-        anyGood = testFlowerInChunkConditional(&xrand, sc, chunks4, flower4);
-
-    return anyGood;
-}
+//__device__ inline bool testFlowers(const SeedConstants& sc)
+//{
+//    Xoroshiro xrand = { 0ULL, 0ULL };
+//
+//    // the most likely naturally generated flower
+//    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+//    const BlockPos2D flower1 = { 5, 4 };
+//    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+//        return false;
+//
+//    // i feel like this has to be natural too, just a hunch though
+//    const ChunkPos chunks2[] = QUAD_CHUNK(190, 22, 1, -1);
+//    const BlockPos2D flower2 = { 10, 2 };
+//    if (!testFlowerInChunkConditional(&xrand, sc, chunks2, flower2))
+//        return false;
+//
+//    // for these two we'll just say that it's likely that at least one is correct
+//    bool anyGood = false;
+//
+//    const ChunkPos chunks3[] = QUAD_CHUNK(191, 21, 1, -1);
+//    const BlockPos2D flower3 = { 11, 5 };
+//    anyGood = testFlowerInChunkConditional(&xrand, sc, chunks3, flower3);
+//
+//    const ChunkPos chunks4[] = QUAD_CHUNK(189, 20, -1, 1);
+//    const BlockPos2D flower4 = { 0, 11 };
+//    if (!anyGood)
+//        anyGood = testFlowerInChunkConditional(&xrand, sc, chunks4, flower4);
+//
+//    return anyGood;
+//}
 
 // 13s per 2^32
-__device__ inline bool testFlowers2 /*ElectricBoogaloo*/(const SeedConstants& sc)
-{
-    Xoroshiro xrand = { 0ULL, 0ULL };
-
-    // the most likely naturally generated flower
-    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
-    const BlockPos2D flower1 = { 5, 4 };
-    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
-        return false;
-
-    int matchedClusters = 0;
-#pragma unroll
-    for (int i = 0; i < FLOWER_CLUSTER_COUNT; i++)
-    {
-        const BlockPos2D clusterPos = flowerClusters[i];
-        const BlockPos2D flower = { clusterPos.x & 15, clusterPos.z & 15 };
-        const BlockPos2D dir = { (flower.x < 8 ? -1 : 1), (flower.z < 8 ? -1 : 1) };
-        const ChunkPos clusterChunk = { clusterPos.x >> 4, clusterPos.z >> 4 };
-        const ChunkPos chunks[] = QUAD_CHUNK(clusterChunk.x, clusterChunk.z, dir.x, dir.z);
-
-        if (testFlowerInChunkConditional(&xrand, sc, chunks, flower))
-            matchedClusters++;
-    }
-
-    return matchedClusters >= CLUSTER_THRESHOLD;
-}
+//__device__ inline bool testFlowers2 /*ElectricBoogaloo*/(const SeedConstants& sc)
+//{
+//    Xoroshiro xrand = { 0ULL, 0ULL };
+//
+//    // the most likely naturally generated flower
+//    const ChunkPos chunks1[] = QUAD_CHUNK(191, 19, -1, -1);
+//    const BlockPos2D flower1 = { 5, 4 };
+//    if (!testFlowerInChunkConditional(&xrand, sc, chunks1, flower1))
+//        return false;
+//
+//    int matchedClusters = 0;
+//#pragma unroll
+//    for (int i = 0; i < FLOWER_CLUSTER_COUNT; i++)
+//    {
+//        const BlockPos2D clusterPos = flowerClusters[i];
+//        const BlockPos2D flower = { clusterPos.x & 15, clusterPos.z & 15 };
+//        const BlockPos2D dir = { (flower.x < 8 ? -1 : 1), (flower.z < 8 ? -1 : 1) };
+//        const ChunkPos clusterChunk = { clusterPos.x >> 4, clusterPos.z >> 4 };
+//        const ChunkPos chunks[] = QUAD_CHUNK(clusterChunk.x, clusterChunk.z, dir.x, dir.z);
+//
+//        if (testFlowerInChunkConditional(&xrand, sc, chunks, flower))
+//            matchedClusters++;
+//    }
+//
+//    return matchedClusters >= CLUSTER_THRESHOLD;
+//}
 
 // 51s per 2^32
 __device__ inline bool testFlowers3(const SeedConstants& sc)
@@ -200,7 +237,8 @@ static int setupConstantMemory()
             // read branch data
             for (int i = 0; i < branches; i++)
             {
-                (void)fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z));
+                if (fscanf(fptr, "%d%d%d", &(branch.x), &(branch.y), &(branch.z)) != 3)
+					HOST_ERROR("incorrect input data format");
                 addBranch(treePtr, branch);
             }
         }
@@ -210,69 +248,64 @@ static int setupConstantMemory()
 
     //printf("Read %d trees, %d or-ed trees from file\n", treeCount, oredTreeCount);
 
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTrees, oredTrees_H, sizeof(PaleOakTree) * oredTreeCount));
-    CHECKED_OPERATION(cudaMemcpyToSymbol(targetOredTreeCount, &oredTreeCount, sizeof(int)));
+    GPU_ASSERT(cudaMemcpyToSymbol(targetTrees, trees_H, sizeof(PaleOakTree) * treeCount));
+    GPU_ASSERT(cudaMemcpyToSymbol(targetTreeCount, &treeCount, sizeof(int)));
+    GPU_ASSERT(cudaMemcpyToSymbol(targetOredTrees, oredTrees_H, sizeof(PaleOakTree) * oredTreeCount));
+    GPU_ASSERT(cudaMemcpyToSymbol(targetOredTreeCount, &oredTreeCount, sizeof(int)));
 
     return 0;
 }
 
 // ----------------------------------------------------------------
 
-constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 32;
-
-__global__ void crackTextSeedTrees()
-{
-    uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x;
-    if (tid >= TEXT_SEEDS_TOTAL) return;
-
-    // extend the sign bit if necessary
-    uint64_t worldseed = tid;
-    if ((worldseed & 0x80000000ULL) != 0ULL)
-        worldseed |= 0xffffffff00000000;
-
-    randomBullshitFilter(worldseed);
-}
-
-static int runCrackerTextSeeds()
-{
-    CHECKED_OPERATION(cudaSetDevice(0));
-
-    if (setupConstantMemory() != 0)
-        return 1;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    resultID1 = 0;
-
-    const int THREADS_PER_BLOCK = 256;
-    const int NUM_BLOCKS_1 = (TEXT_SEEDS_TOTAL + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    crackTextSeedTrees << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > ();
-    CHECKED_OPERATION(cudaGetLastError());
-    CHECKED_OPERATION(cudaDeviceSynchronize());
-
-    for (int i = 0; i < resultID1; i++)
-    {
-        printSignedSeed(results1[i]);
-    }
-
-#ifdef STATS
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = end - start;
-    double ms = (double)elapsed.count() / 1000000.0;
-    printf("\nKernel took %lf ms\n", ms);
-#endif
-
-    CHECKED_OPERATION(cudaDeviceReset());
-
-    return 0;
-}
+//constexpr uint64_t TEXT_SEEDS_TOTAL = 1ULL << 32;
+//
+//__global__ void crackTextSeedTrees()
+//{
+//    uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x;
+//    if (tid >= TEXT_SEEDS_TOTAL) return;
+//
+//    // extend the sign bit if necessary
+//    uint64_t worldseed = tid;
+//    if ((worldseed & 0x80000000ULL) != 0ULL)
+//        worldseed |= 0xffffffff00000000;
+//
+//    randomBullshitFilter(worldseed);
+//}
+//
+//static int runCrackerTextSeeds()
+//{
+//    GPU_ASSERT(cudaSetDevice(0));
+//    if (setupConstantMemory() != 0)
+//        return 1;
+//
+//    auto start = std::chrono::steady_clock::now();
+//
+//    resultID1 = 0;
+//    const int THREADS_PER_BLOCK = 256;
+//    const int NUM_BLOCKS_1 = (TEXT_SEEDS_TOTAL + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+//    crackTextSeedTrees <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >>> ();
+//    GPU_ASSERT(cudaGetLastError());
+//    GPU_ASSERT(cudaDeviceSynchronize());
+//
+//    for (int i = 0; i < resultID1; i++)
+//    {
+//        printSignedSeed(results1[i]);
+//    }
+//
+//    auto end = std::chrono::high_resolution_clock::now();
+//    auto elapsed = end - start;
+//    double ms = (double)elapsed.count() / 1000000.0;
+//    printf("Kernel took %f ms\n");
+//
+//    GPU_ASSERT(cudaDeviceReset());
+//    return 0;
+//}
 
 // ----------------------------------------------------------------
 
 constexpr uint64_t RANDOM_SEEDS_TOTAL = 1ULL << 48;
-constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 31;
+constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 30;
 //constexpr uint8_t BITS_PER_THREAD = 0;
 //constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
@@ -285,55 +318,43 @@ __global__ void crackRandomSeedTrees(const uint64_t offset)
     const uint64_t tid = threadIdx.x + (uint64_t)blockDim.x * blockIdx.x + offset;
     if (tid >= RANDOM_SEEDS_TOTAL) return;
 
-    //#pragma unroll
-    //for (uint32_t low = 0; low < RANDOM_SEEDS_PER_THREAD; low++)
-    //{
-        //const uint64_t firstState = tid | low;
     const uint64_t secondState = (tid * JRAND_MULTIPLIER + JRAND_ADDEND) & MASK48;
     const int toAdd = (int)(secondState >> 16);
     const uint64_t worldseed = ((tid >> 16) << 32) + toAdd;
-
     randomBullshitFilter(worldseed);
-    //}
 }
 
-static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
+static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time_elapsed, int32_t devID)
 {
-    if (runStart < 0) runStart = 0;
-    if (runEnd > NUM_RUNS_RANDOM_SEEDS) runEnd = NUM_RUNS_RANDOM_SEEDS;
-
-    CHECKED_OPERATION(cudaSetDevice(devID));
-
-    if (setupConstantMemory() != 0)
-        return 1;
-
-#ifdef STATS
-    auto startGlobal = std::chrono::steady_clock::now();
-    auto start = std::chrono::steady_clock::now();
-    //double ms1 = 0.0, ms2 = 0.0, ms3 = 0.0;
-#endif
-
-    for (int run = runStart; run < runEnd; run++)
+    if (runStart < 0)
     {
-#ifdef STATS
-        if (run % RUNS_PER_PRINT == 0)
-        {
-            start = std::chrono::steady_clock::now();
-            printf(" --- Run %d / %d\n", run + 1, NUM_RUNS_RANDOM_SEEDS);
-        }
-#endif
+        runStart = 0;
+        HOST_LOG("runStart (%d) was negative, set to 0", runStart);
+    }
+    if (runEnd > NUM_RUNS_RANDOM_SEEDS)
+    {
+        runEnd = NUM_RUNS_RANDOM_SEEDS;
+        HOST_LOG("runEnd (%d) was above max value (%d), set to %d", runEnd, NUM_RUNS_RANDOM_SEEDS, NUM_RUNS_RANDOM_SEEDS);
+    }
 
+    GPU_ASSERT(cudaSetDevice(devID));
+    if (setupConstantMemory() != 0)
+		HOST_ERROR("CRITICAL: setupConstantMemory failed\n");
+
+    for (int32_t run = runStart; run < runEnd; run++)
+    {
         resultID1 = 0;
 
-        const int THREADS_PER_BLOCK = 512;
+        const int THREADS_PER_BLOCK = 256;
         const int NUM_BLOCKS_1 = (THREADS_LAUNCHED_PER_RUN + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
-        //auto s1 = std::chrono::steady_clock::now();
-        crackRandomSeedTrees << < NUM_BLOCKS_1, THREADS_PER_BLOCK >> > (run * THREADS_LAUNCHED_PER_RUN);
-        CHECKED_OPERATION(cudaGetLastError());
-        CHECKED_OPERATION(cudaDeviceSynchronize());
-        //auto e1 = std::chrono::steady_clock::now();
-        //ms1 += (e1 - s1).count() / 1000000.0;
+        time_point t0 = std::chrono::steady_clock::now();
+        crackRandomSeedTrees <<< NUM_BLOCKS_1, THREADS_PER_BLOCK >>> (run * THREADS_LAUNCHED_PER_RUN);
+        GPU_ASSERT(cudaGetLastError());
+        GPU_ASSERT(cudaDeviceSynchronize());
+		time_point t1 = std::chrono::steady_clock::now();
+		uint64_t run_duration = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+		time_elapsed += run_duration;
 
         for (int i = 0; i < resultID1; i++)
         {
@@ -359,7 +380,7 @@ static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
 #endif
     }
 
-    CHECKED_OPERATION(cudaDeviceReset());
+    GPU_ASSERT(cudaDeviceReset());
 
 #ifdef STATS
     auto endGlobal = std::chrono::steady_clock::now();
@@ -382,25 +403,95 @@ static int runCrackerRandomSeeds(int runStart, int runEnd, int devID)
 
 // ------------------------------------------------------
 
+struct checkpoint_vars {
+    int32_t range_min;
+	int32_t range_max;
+    uint64_t elapsed_chkpoint;
+};
+
 int runTreeKernel(int argc, char** argv)
 {
-    if (argc <= 2)
-        HOST_ERROR("usage: ./executable rangeStartInclusive rangeEndExclusive [d deviceID]");
+    int32_t range_min = 0;
+    int32_t range_max = 0;
+    int32_t device = 0;
 
-    int rangeStart = atoi(argv[1]);
-    int rangeEnd = atoi(argv[2]);
-
-    int devID = 0;
-    for (int i = 3; i < argc; i++)
+    for (int i = 0; i < argc; i++)
     {
-        if (argv[i][0] == 'd' && i != argc - 1)
-            devID = atoi(argv[i + 1]);
+        const char* param = argv[i];
+        if (strcmp(param, "-d") == 0 || strcmp(param, "--device") == 0) {
+            sscanf(argv[i + 1], "%d", &device);
+        }
+        else if (strcmp(param, "-s") == 0 || strcmp(param, "--start") == 0) {
+            sscanf(argv[i + 1], "%d", &range_min);
+        }
+        else if (strcmp(param, "-e") == 0 || strcmp(param, "--end") == 0) {
+            sscanf(argv[i + 1], "%d", &range_max);
+        }
+        else {
+			HOST_LOG("Unknown parameter: %s", param);
+        }
+    }
+    if (range_min == 0 && range_max == 0)
+    {
+		HOST_LOG("range might not have been specified (was 0:0).");
     }
 
-    return runCrackerRandomSeeds(rangeStart, rangeEnd, devID);
+    int32_t checkpoint_min = -1, checkpoint_max = -1;
+    uint64_t time_elapsed = 0;
+
+#ifdef BOINC
+    BOINC_OPTIONS options;
+    boinc_options_defaults(options);
+    options.normal_thread_priority = true;
+    boinc_init_options(&options);
+    APP_INIT_DATA aid;
+    boinc_get_init_data(aid);
+    if (aid.gpu_device_num >= 0) {
+        //If BOINC client provided us a device ID
+        device = aid.gpu_device_num;
+        fprintf(stderr, "boinc gpu %i gpuindex: %i \n", aid.gpu_device_num, device);
+    }
+    else {
+        //If BOINC client did not provide us a device ID
+        device = -5;
+        for (int i = 1; i < argc; i += 2) {
+            //Check for a --device flag, just in case we missed it earlier, use it if it's available. For older clients primarily.
+            if (strcmp(argv[i], "--device") == 0) {
+                sscanf(argv[i + 1], "%i", &device);
+            }
+
+        }
+        if (device == -5) {
+            //Something has gone wrong. It pulled from BOINC, got -1. No --device parameter present.
+            fprintf(stderr, "Error: No --device parameter provided! Defaulting to device 0...\n");
+            device = 0;
+        }
+        fprintf(stderr, "stndalone gpuindex %i (aid value: %i)\n", device, aid.gpu_device_num);
+    }
+
+    FILE* checkpoint_data = boinc_fopen("checkpoint.txt", "rb");
+    if (!checkpoint_data) {
+        //No checkpoint file was found. Proceed from the beginning.
+        fprintf(stderr, "No checkpoint to load\n");
+    }
+    else {
+        //Load from checkpoint. You can put any data in data_store that you need to keep between runs of this program.
+        boinc_begin_critical_section();
+        struct checkpoint_vars data_store;
+        fread(&data_store, sizeof(data_store), 1, checkpoint_data);
+		range_min = data_store.range_min;
+		range_max = data_store.range_max;
+        time_elapsed = data_store.elapsed_chkpoint;
+        fprintf(stderr, "Checkpoint loaded, task time %d s, seed pos: %llu\n", elapsed_chkpoint, offsetStart);
+        fclose(checkpoint_data);
+        boinc_end_critical_section();
+    }
+#endif // BOINC
+
+    return runCrackerRandomSeeds(range_min, range_max, time_elapsed, device);
 }
 
-int runTreeKernelTextSeeds()
-{
-    return runCrackerTextSeeds();
-}
+//int runTreeKernelTextSeeds()
+//{
+//    return runCrackerTextSeeds();
+//}
