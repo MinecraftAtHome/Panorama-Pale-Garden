@@ -14,6 +14,7 @@
 typedef std::chrono::steady_clock::time_point time_point;
 
 #ifdef BOINC
+constexpr int RUNS_PER_CHECKPOINT = 16;
 #include "boinc_api.h"
 #if defined _WIN32 || defined _WIN64
 #include "boinc_win.h"
@@ -310,7 +311,7 @@ constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 30;
 //constexpr int RANDOM_SEEDS_PER_THREAD = 1 << BITS_PER_THREAD;
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
-constexpr int RUNS_PER_PRINT = 100;
+
 
 __global__ void crackRandomSeedTrees(const uint64_t offset)
 {
@@ -341,6 +342,9 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
     if (setupConstantMemory() != 0)
 		HOST_ERROR("CRITICAL: setupConstantMemory failed\n");
 
+    uint64_t checkpointTemp = 0;
+    FILE* seedsout = fopen("seeds.txt", "w+");
+
     for (int32_t run = runStart; run < runEnd; run++)
     {
         resultID1 = 0;
@@ -355,49 +359,54 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
 		time_point t1 = std::chrono::steady_clock::now();
 		uint64_t run_duration = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
 		time_elapsed += run_duration;
+        checkpointTemp++;
 
-        for (int i = 0; i < resultID1; i++)
-        {
-            printSignedSeed(results1[i]);
+		// write the results before doing checkpoint
+		for (int i = 0; i < resultID1; i++)
+		{
+			const int64_t worldseed = (int64_t)(results1[i]);
+			fprintf(seedsout, "%" PRId64 "\n", worldseed);
+		}
+        fflush(seedsout);
+
+#ifdef BOINC
+        if (checkpointTemp >= RUNS_PER_CHECKPOINT-1 || boinc_time_to_checkpoint()) {
+            //Checkpointing for BOINC
+            boinc_begin_critical_section(); // Boinc should not interrupt this
+
+            checkpointTemp = 0;
+            boinc_delete_file("checkpoint.txt"); // Don't touch, same func as normal fdel
+            FILE* checkpoint_data = boinc_fopen("checkpoint.txt", "wb");
+
+            struct checkpoint_vars data_store;
+			data_store.range_min = run + 1; // this run was already completed, processing can resume from next run
+			data_store.range_max = runEnd;
+            data_store.elapsed_chkpoint = time_elapsed;
+            fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
+            fclose(checkpoint_data);
+
+            boinc_end_critical_section();
+            boinc_checkpoint_completed(); // Checkpointing completed
         }
-
-#ifdef STATS
-        if (run % RUNS_PER_PRINT == RUNS_PER_PRINT - 1)
-        {
-            auto end = std::chrono::steady_clock::now();
-            auto elapsed = end - start;
-            double ms = (double)elapsed.count() / 1000000.0 / (double)RUNS_PER_PRINT;
-
-            // calc eta based on this run
-            double eta_s = ms * (runEnd - run) / 1000.0;
-            int sec = (int)floor(eta_s) % 60;
-            double eta_min = eta_s / 60.0;
-            int min = (int)floor(eta_min) % 60;
-            double eta_h = eta_min / 60.0;
-            int hrs = (int)floor(eta_h);
-            fprintf(stderr, "ETA: %d HRS %d MIN %d SEC\n", hrs, min, sec);
-        }
-#endif
+        // Update boinc client with percentage
+        double frac = (double)(run - global_range_min + 1) / (double)(global_range_max - global_range_min);
+        boinc_fraction_done(frac);
+#endif // BOINC
     }
-
     GPU_ASSERT(cudaDeviceReset());
 
-#ifdef STATS
-    auto endGlobal = std::chrono::steady_clock::now();
-    auto elapsedGlobal = endGlobal - startGlobal;
-    double seconds = (double)elapsedGlobal.count() / 1000000.0 / 1000.0;
-    printf("Runs took %lf seconds in total:\n", seconds);
+    // write performance stats to stderr
+    uint64_t seeds_checked = (global_range_max - global_range_min) * RANDOM_SEEDS_PER_RUN;
+	double elapsed_s = (double)time_elapsed * 1e-6;
+	double sps = (double)seeds_checked / elapsed_s;
+    fprintf(stderr, "[stats] completed tasks = [%d, %d)\n", global_range_min, global_range_max);
+    fprintf(stderr, "[stats] seeds checked = %llu\n", seeds_checked);
+    fprintf(stderr, "[stats] time taken = %f (s)\n", elapsed_s);
+	fprintf(stderr, "[stats] speed = %f (seeds/s)\n", sps);
 
-    //printf("Filter 1: %lf sec\n", ms1 / 1000.0);
-    //printf("Filter 2: %lf sec\n", ms2 / 1000.0);
-    //printf("Filter 3: %lf sec\n", ms3 / 1000.0);
-
-    double minutesFull = seconds / 60.0 * NUM_RUNS_RANDOM_SEEDS / (runEnd - runStart);
-    int min = (int)floor(minutesFull) % 60;
-    int hrs = (int)floor(minutesFull / 60.0);
-    printf("\nEstimated runtime for full seedspace: %d hours %d minutes\n", hrs, min);
+#ifdef BOINC
+    boinc_finish(0);
 #endif
-
     return 0;
 }
 
@@ -408,6 +417,8 @@ struct checkpoint_vars {
 	int32_t range_max;
     uint64_t elapsed_chkpoint;
 };
+int32_t global_range_min = 0;
+int32_t global_range_max = 0;
 
 int runTreeKernel(int argc, char** argv)
 {
@@ -436,6 +447,8 @@ int runTreeKernel(int argc, char** argv)
 		HOST_LOG("range might not have been specified (was 0:0).");
     }
 
+    global_range_min = range_min;
+	global_range_max = range_max;
     int32_t checkpoint_min = -1, checkpoint_max = -1;
     uint64_t time_elapsed = 0;
 
@@ -491,7 +504,7 @@ int runTreeKernel(int argc, char** argv)
     return runCrackerRandomSeeds(range_min, range_max, time_elapsed, device);
 }
 
-//int runTreeKernelTextSeeds()
-//{
-//    return runCrackerTextSeeds();
-//}
+int runTreeKernelTextSeeds()
+{
+    //return runCrackerTextSeeds();
+}

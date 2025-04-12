@@ -4,8 +4,6 @@ extern int runTreeKernelTextSeeds();
 
 
 int main(int argc, char** argv) {
-	// runTreeKernelTextSeeds();
-	runTreeKernel(argc, argv);
-
-	return 0;
+	//return runTreeKernelTextSeeds();
+	return runTreeKernel(argc, argv);
 }
