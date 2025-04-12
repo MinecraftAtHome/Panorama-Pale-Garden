@@ -447,9 +447,10 @@ int runTreeKernel(int argc, char** argv)
 		HOST_LOG("range might not have been specified (was 0:0).");
     }
 
+    // range_min, range_max will get updated by the checkpoint, their
+	// initial values need to be stored for performance measurement
     global_range_min = range_min;
 	global_range_max = range_max;
-    int32_t checkpoint_min = -1, checkpoint_max = -1;
     uint64_t time_elapsed = 0;
 
 #ifdef BOINC
