@@ -47,7 +47,7 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
        name: ${{ github.event.repository.name }}-cuda-win
-       path: .\${{ github.event.repository.name }}*.exe
+       path: .\PaleGardenPano\${{ github.event.repository.name }}*.exe
   linux_cuda:
     name: cuda/release/linux
     runs-on: [ubuntu-latest]
@@ -64,4 +64,4 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
        name: ${{ github.event.repository.name }}-cuda-lin
-       path: ./${{ github.event.repository.name }}-cuda*
+       path: ./PaleGardenPano/${{ github.event.repository.name }}-cuda*
