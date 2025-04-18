@@ -76,6 +76,9 @@ __constant__ BlockPos2D flowerClusters[FLOWER_CLUSTER_COUNT] = {
     { 3037, 330 }
 };
 
+// for boinc quorum validation
+__managed__ uint64_t checksum = 0;
+
 // --------------------------------------------------------------------------------------------
 
 // 3s per 2^32
@@ -179,6 +182,7 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     {
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
+        atomicAdd(&checksum, sc.B); // checksum gets updated around 1000x per WU with this setup
     }
 
     // check or-ed tree generation (very, very slow filter)
@@ -189,7 +193,6 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
         if (!canAnyGen)
             return;
     }
-
 
     const int i = atomicAdd(&resultID1, 1);
     if (i >= MAX_RESULTS_1)
@@ -306,7 +309,7 @@ static int setupConstantMemory()
 // ----------------------------------------------------------------
 
 constexpr uint64_t RANDOM_SEEDS_TOTAL = 1ULL << 48;
-constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 30;
+constexpr uint64_t THREADS_LAUNCHED_PER_RUN = 1ULL << 28; // each run should now take 1-5 seconds
 constexpr uint64_t RANDOM_SEEDS_PER_RUN = THREADS_LAUNCHED_PER_RUN;
 constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN - 1) / RANDOM_SEEDS_PER_RUN;
 
@@ -315,6 +318,7 @@ struct checkpoint_vars {
     int32_t range_min;
     int32_t range_max;
     uint64_t elapsed_chkpoint;
+	uint64_t stored_checksum;
 };
 int32_t global_range_min = 0;
 int32_t global_range_max = 0;
@@ -389,6 +393,7 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
 			data_store.range_min = run + 1; // this run was already completed, processing can resume from next run
 			data_store.range_max = runEnd;
             data_store.elapsed_chkpoint = time_elapsed;
+			data_store.stored_checksum = checksum;
             fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
             fclose(checkpoint_data);
 
@@ -402,6 +407,10 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
     }
     GPU_ASSERT(cudaDeviceReset());
 
+    // append checksum to result file
+	fprintf(seedsout, "##%" PRId64 "\n", checksum);
+	fclose(seedsout);
+
     // write performance stats to stderr
     uint64_t seeds_checked = (global_range_max - global_range_min) * RANDOM_SEEDS_PER_RUN;
 	double elapsed_s = (double)time_elapsed * 1e-6;
@@ -410,6 +419,7 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
     fprintf(stderr, "[stats] seeds checked = %llu\n", seeds_checked);
     fprintf(stderr, "[stats] time taken = %f (s)\n", elapsed_s);
 	fprintf(stderr, "[stats] speed = %f (seeds/s)\n", sps);
+	fprintf(stderr, "[checksum] %llu\n", checksum);
 
 #ifdef BOINC
     boinc_finish(0);
@@ -430,12 +440,15 @@ int runTreeKernel(int argc, char** argv)
         const char* param = argv[i];
         if (strcmp(param, "-d") == 0 || strcmp(param, "--device") == 0) {
             sscanf(argv[i + 1], "%d", &device);
+            i++;
         }
         else if (strcmp(param, "-s") == 0 || strcmp(param, "--start") == 0) {
             sscanf(argv[i + 1], "%d", &range_min);
+            i++;
         }
         else if (strcmp(param, "-e") == 0 || strcmp(param, "--end") == 0) {
             sscanf(argv[i + 1], "%d", &range_max);
+            i++;
         }
         else {
 			HOST_LOG("Unknown parameter: %s", param);
@@ -450,6 +463,7 @@ int runTreeKernel(int argc, char** argv)
 	// initial values need to be stored for performance measurement
     global_range_min = range_min;
 	global_range_max = range_max;
+    checksum = 0;
     uint64_t time_elapsed = 0;
 
 #ifdef BOINC
@@ -495,6 +509,7 @@ int runTreeKernel(int argc, char** argv)
 		range_min = data_store.range_min;
 		range_max = data_store.range_max;
         time_elapsed = data_store.elapsed_chkpoint;
+		checksum = data_store.stored_checksum;
         fprintf(stderr, "Checkpoint loaded, task time %llu us, seed pos: %llu\n", time_elapsed, range_min);
         fclose(checkpoint_data);
         boinc_end_critical_section();
