@@ -77,7 +77,7 @@ __constant__ BlockPos2D flowerClusters[FLOWER_CLUSTER_COUNT] = {
 };
 
 // for boinc quorum validation
-__managed__ uint64_t checksum = 0;
+__managed__ uint32_t checksum = 0;
 
 // --------------------------------------------------------------------------------------------
 
@@ -182,7 +182,8 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     {
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
-        atomicAdd(&checksum, sc.B); // checksum gets updated around 1000x per WU with this setup
+        // checksum gets updated around 1000x per WU with this setup
+        atomicAdd(reinterpret_cast<uint32_t*>(&checksum), static_cast<uint32_t>(sc.B)); 
     }
 
     // check or-ed tree generation (very, very slow filter)
@@ -317,8 +318,8 @@ constexpr int NUM_RUNS_RANDOM_SEEDS = (RANDOM_SEEDS_TOTAL + RANDOM_SEEDS_PER_RUN
 struct checkpoint_vars {
     int32_t range_min;
     int32_t range_max;
+    uint32_t stored_checksum;
     uint64_t elapsed_chkpoint;
-	uint64_t stored_checksum;
 };
 int32_t global_range_min = 0;
 int32_t global_range_max = 0;
@@ -408,7 +409,7 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
     GPU_ASSERT(cudaDeviceReset());
 
     // append checksum to result file
-	fprintf(seedsout, "##%" PRId64 "\n", checksum);
+	fprintf(seedsout, "##%" PRIu32 "\n", checksum);
 	fclose(seedsout);
 
     // write performance stats to stderr
@@ -419,7 +420,7 @@ static int runCrackerRandomSeeds(int32_t runStart, int32_t runEnd, uint64_t time
     fprintf(stderr, "[stats] seeds checked = %llu\n", seeds_checked);
     fprintf(stderr, "[stats] time taken = %f (s)\n", elapsed_s);
 	fprintf(stderr, "[stats] speed = %f (seeds/s)\n", sps);
-	fprintf(stderr, "[checksum] %llu\n", checksum);
+	fprintf(stderr, "[checksum] %u\n", checksum);
 
 #ifdef BOINC
     boinc_finish(0);
