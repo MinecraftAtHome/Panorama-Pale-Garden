@@ -436,7 +436,7 @@ int runTreeKernel(int argc, char** argv)
     int32_t range_max = 0;
     int32_t device = 0;
 
-    for (int i = 0; i < argc; i++)
+    for (int i = 1; i < argc; i++)
     {
         const char* param = argv[i];
         if (strcmp(param, "-d") == 0 || strcmp(param, "--device") == 0) {
