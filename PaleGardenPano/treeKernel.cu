@@ -170,20 +170,20 @@ __device__ inline void randomBullshitFilter(const uint64_t worldseed)
     sc.B = (xNextLongJ(&xrand) | 1ULL) << 4;
 
     // check flower generation (decently fast filter)
-    if (!testFlowers3(sc))
-        return;
+    //if (!testFlowers3(sc))
+    //    return;
 
     // check mushroom generation (slow filter)
-    if (!testMushroom(sc))
-        return;
+    //if (!testMushroom(sc))
+    //    return;
 
     // check tree generation (very, very slow filter)
     for (int i = 0; i < targetTreeCount; i++)
     {
         if (!canTreeGenerate(sc, targetTrees[i]))
             return;
-        // checksum gets updated around 1000x per WU with this setup
-        atomicAdd(reinterpret_cast<uint32_t*>(&checksum), static_cast<uint32_t>(sc.B)); 
+        if (i >= 1) // introduced this to limit the number of managed atomic ops performed
+            atomicAdd(reinterpret_cast<uint32_t*>(&checksum), static_cast<uint32_t>(sc.B)); 
     }
 
     // check or-ed tree generation (very, very slow filter)
